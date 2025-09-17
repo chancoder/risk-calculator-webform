@@ -1,0 +1,410 @@
+/* Modern CSS for Risk Calculator Web Forms Application */
+
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f7fa;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* Container */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #fff;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+/* Header */
+header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #e1e8ed;
+}
+
+header h1 {
+    color: #2c3e50;
+    font-size: 2.5em;
+    margin-bottom: 10px;
+    font-weight: 300;
+}
+
+header h2 {
+    color: #34495e;
+    font-size: 2em;
+    margin-bottom: 10px;
+    font-weight: 400;
+}
+
+header h3 {
+    color: #7f8c8d;
+    font-size: 1.2em;
+    font-weight: 300;
+}
+
+/* Navigation */
+.navigation {
+    margin-bottom: 30px;
+}
+
+.nav-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.nav-table td {
+    padding: 15px;
+    text-align: center;
+    border: 1px solid #e1e8ed;
+    transition: all 0.3s ease;
+}
+
+.nav-table td:hover {
+    background-color: #f8f9fa;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.nav-link {
+    display: block;
+    color: #2c3e50;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 1.1em;
+    transition: color 0.3s ease;
+}
+
+.nav-link:hover {
+    color: #3498db;
+    text-decoration: none;
+}
+
+.bottom-nav {
+    margin-top: 30px;
+    text-align: center;
+    padding-top: 20px;
+    border-top: 1px solid #e1e8ed;
+}
+
+/* Content */
+.content {
+    margin-bottom: 30px;
+}
+
+/* Forms */
+.form-panel {
+    background-color: #f8f9fa;
+    padding: 30px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid #e1e8ed;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e1e8ed;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+}
+
+/* Buttons */
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+}
+
+.btn-primary {
+    background-color: #3498db;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #2980b9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
+}
+
+.btn-secondary {
+    background-color: #95a5a6;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #7f8c8d;
+}
+
+.btn-danger {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #c0392b;
+}
+
+/* Results */
+.results-panel {
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid #e1e8ed;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.results-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+.results-table td {
+    padding: 12px;
+    border: 1px solid #e1e8ed;
+}
+
+.results-table tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.results-table tr:first-child {
+    background-color: #ecf0f1;
+    font-weight: bold;
+}
+
+/* Portfolio Grid */
+.portfolio-grid {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+.grid-header {
+    background-color: #34495e;
+    color: white;
+    padding: 15px;
+    text-align: left;
+}
+
+.grid-row, .grid-alt-row {
+    padding: 12px;
+    border-bottom: 1px solid #e1e8ed;
+}
+
+.grid-alt-row {
+    background-color: #f8f9fa;
+}
+
+/* Risk Levels */
+.risk-level {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.risk-level.low {
+    background-color: #d5f4e6;
+    color: #27ae60;
+}
+
+.risk-level.medium {
+    background-color: #fef9e7;
+    color: #f39c12;
+}
+
+.risk-level.high {
+    background-color: #fadbd8;
+    color: #e74c3c;
+}
+
+/* Portfolio Summary */
+.portfolio-summary {
+    background-color: #ecf0f1;
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+}
+
+.summary-table {
+    width: 100%;
+    margin-top: 10px;
+}
+
+.summary-table td {
+    padding: 8px 0;
+}
+
+.summary-value {
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+/* Alerts */
+.alerts-controls {
+    margin-bottom: 20px;
+    text-align: right;
+}
+
+.no-alerts-panel {
+    text-align: center;
+    padding: 40px;
+}
+
+.alerts-list-panel {
+    margin-bottom: 20px;
+}
+
+.alert {
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    border-left: 4px solid;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    border-left-color: #bee5eb;
+    color: #0c5460;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    border-left-color: #ffeaa7;
+    color: #856404;
+}
+
+.alert-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.alert-time {
+    font-size: 0.9em;
+    color: #6c757d;
+    font-weight: normal;
+}
+
+.alert-stats {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 4px;
+    border: 1px solid #e1e8ed;
+}
+
+/* Error Messages */
+.error-message {
+    color: #e74c3c;
+    font-size: 0.9em;
+    margin-top: 5px;
+}
+
+.error-panel {
+    margin-top: 20px;
+}
+
+/* Simulation */
+.simulation-controls {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.simulation-info {
+    background-color: #e8f4fd;
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    border-left: 4px solid #3498db;
+}
+
+.chart-placeholder {
+    background-color: #f8f9fa;
+    padding: 40px;
+    text-align: center;
+    border-radius: 8px;
+    margin-top: 20px;
+    border: 2px dashed #bdc3c7;
+    color: #7f8c8d;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #e1e8ed;
+    color: #7f8c8d;
+    font-style: italic;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        margin: 10px;
+        padding: 15px;
+    }
+    
+    header h1 {
+        font-size: 2em;
+    }
+    
+    header h2 {
+        font-size: 1.5em;
+    }
+    
+    .form-panel, .results-panel {
+        padding: 20px;
+    }
+    
+    .nav-table td {
+        padding: 10px;
+    }
+    
+    .btn {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+}
