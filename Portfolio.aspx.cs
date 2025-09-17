@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
+using System.Linq;
 using System.Web.UI;
-using System.Web.UI.WebControls;
+using RiskCalculatorWebForm.Controls;
 
 namespace RiskCalculatorWebForm
 {
@@ -12,43 +12,98 @@ namespace RiskCalculatorWebForm
         {
             if (!IsPostBack)
             {
-                LoadPortfolioData();
+                // Initialize ViewState for portfolio insights
+                ViewState["PortfolioInsights"] = new Dictionary<string, object>();
+                ViewState["LastAnalysisTime"] = DateTime.Now;
+                
+                // Initialize SessionState for portfolio tracking
+                if (Session["PortfolioViewCount"] == null)
+                {
+                    Session["PortfolioViewCount"] = 0;
+                }
+                
+                UpdatePortfolioInsights();
+            }
+            else
+            {
+                UpdatePortfolioInsights();
             }
         }
-        
-        private void LoadPortfolioData()
+
+        protected void PortfolioGridControl_PortfolioDataLoaded(object sender, PortfolioDataEventArgs e)
         {
-            var riskCalculator = new RiskCalculator();
-            var portfolioData = riskCalculator.GetPortfolioData();
+            // Handle portfolio data loaded event from the control
+            var portfolioData = e.Holdings;
             
-            var dt = new DataTable();
-            dt.Columns.Add("Symbol", typeof(string));
-            dt.Columns.Add("Value", typeof(decimal));
-            dt.Columns.Add("DailyVaR", typeof(decimal));
-            dt.Columns.Add("RiskPercentage", typeof(decimal));
+            // Update session statistics
+            int viewCount = (int)Session["PortfolioViewCount"];
+            Session["PortfolioViewCount"] = viewCount + 1;
+            Session["LastPortfolioView"] = DateTime.Now;
+            Session["LastPortfolioData"] = portfolioData;
             
-            decimal totalValue = 0;
-            decimal totalVaR = 0;
-            
-            foreach (var item in portfolioData)
+            // Store insights in ViewState
+            var insights = new Dictionary<string, object>
             {
-                decimal var = riskCalculator.CalculateVaR(item.Key, item.Value);
-                decimal riskPct = (var / item.Value) * 100;
-                
-                dt.Rows.Add(item.Key, item.Value, var, riskPct);
-                
-                totalValue += item.Value;
-                totalVaR += var;
+                ["TotalValue"] = e.TotalValue,
+                ["TotalVaR"] = e.TotalVaR,
+                ["RiskRatio"] = e.RiskRatio,
+                ["HoldingsCount"] = portfolioData.Count,
+                ["LastUpdated"] = e.LastUpdated
+            };
+            
+            // Find highest and lowest risk holdings
+            var riskCalculator = new RiskCalculator();
+            var riskAnalysis = new List<(string Symbol, decimal RiskRatio)>();
+            
+            foreach (var holding in portfolioData)
+            {
+                decimal var = riskCalculator.CalculateVaR(holding.Key, holding.Value);
+                decimal riskRatio = (var / holding.Value) * 100;
+                riskAnalysis.Add((holding.Key, riskRatio));
             }
             
-            gvPortfolio.DataSource = dt;
-            gvPortfolio.DataBind();
+            if (riskAnalysis.Any())
+            {
+                var highestRisk = riskAnalysis.OrderByDescending(x => x.RiskRatio).First();
+                var lowestRisk = riskAnalysis.OrderBy(x => x.RiskRatio).First();
+                
+                insights["HighestRiskHolding"] = $"{highestRisk.Symbol} ({highestRisk.RiskRatio:F2}%)";
+                insights["LowestRiskHolding"] = $"{lowestRisk.Symbol} ({lowestRisk.RiskRatio:F2}%)";
+            }
             
-            // Display summary
-            decimal totalRiskPct = (totalVaR / totalValue) * 100;
-            lblTotalValue.Text = string.Format("${0:N2}", totalValue);
-            lblTotalVaR.Text = string.Format("${0:N2}", totalVaR);
-            lblRiskRatio.Text = string.Format("{0:F2}%", totalRiskPct);
+            ViewState["PortfolioInsights"] = insights;
+            ViewState["LastAnalysisTime"] = DateTime.Now;
+            
+            // Update display
+            UpdatePortfolioInsights();
+        }
+
+        private void UpdatePortfolioInsights()
+        {
+            var insights = ViewState["PortfolioInsights"] as Dictionary<string, object>;
+            
+            if (insights != null && insights.Count > 0)
+            {
+                lblLastUpdated.Text = insights.ContainsKey("LastUpdated") ? 
+                    ((DateTime)insights["LastUpdated"]).ToString("yyyy-MM-dd HH:mm:ss") : 
+                    "Never";
+                
+                lblHoldingsCount.Text = insights.ContainsKey("HoldingsCount") ? 
+                    insights["HoldingsCount"].ToString() : "0";
+                
+                lblHighestRisk.Text = insights.ContainsKey("HighestRiskHolding") ? 
+                    insights["HighestRiskHolding"].ToString() : "N/A";
+                
+                lblLowestRisk.Text = insights.ContainsKey("LowestRiskHolding") ? 
+                    insights["LowestRiskHolding"].ToString() : "N/A";
+            }
+            else
+            {
+                lblLastUpdated.Text = "No data available";
+                lblHoldingsCount.Text = "0";
+                lblHighestRisk.Text = "N/A";
+                lblLowestRisk.Text = "N/A";
+            }
         }
     }
 }

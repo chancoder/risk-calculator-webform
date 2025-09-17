@@ -1,0 +1,30 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31729.503
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RiskCalculatorWebForm", "RiskCalculatorWebForm.csproj", "{12345678-1234-5678-9012-123456789012}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RiskCalculatorWebForm.Tests", "RiskCalculatorWebForm.Tests\RiskCalculatorWebForm.Tests.csproj", "{87654321-4321-8765-2109-876543210987}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{12345678-1234-5678-9012-123456789012}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{12345678-1234-5678-9012-123456789012}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{12345678-1234-5678-9012-123456789012}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{12345678-1234-5678-9012-123456789012}.Release|Any CPU.Build.0 = Release|Any CPU
+		{87654321-4321-8765-2109-876543210987}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{87654321-4321-8765-2109-876543210987}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{87654321-4321-8765-2109-876543210987}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{87654321-4321-8765-2109-876543210987}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9A8B7C6D-5E4F-3210-9876-543210987654}
+	EndGlobalSection
+EndGlobal

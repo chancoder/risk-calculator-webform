@@ -1,4 +1,6 @@
 <%@ Page Language="C#" AutoEventWireup="true" CodeBehind="CalculateVar.aspx.cs" Inherits="RiskCalculatorWebForm.CalculateVar" %>
+<%@ Register Src="~/Controls/NavigationControl.ascx" TagName="NavigationControl" TagPrefix="rc" %>
+<%@ Register Src="~/Controls/VarCalculationControl.ascx" TagName="VarCalculationControl" TagPrefix="rc" %>
 
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -13,59 +15,29 @@
                 <h2>Value at Risk (VaR) Calculator</h2>
             </header>
             
+            <rc:NavigationControl ID="navControl" runat="server" />
+            
             <div class="content">
-                <asp:Panel ID="pnlForm" runat="server" CssClass="form-panel">
-                    <div class="form-group">
-                        <label for="txtSymbol">Stock Symbol:</label>
-                        <asp:TextBox ID="txtSymbol" runat="server" CssClass="form-control" Text="AAPL"></asp:TextBox>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="txtAmount">Amount ($):</label>
-                        <asp:TextBox ID="txtAmount" runat="server" CssClass="form-control" Text="100000"></asp:TextBox>
-                        <asp:RegularExpressionValidator ID="revAmount" runat="server" 
-                            ControlToValidate="txtAmount" 
-                            ValidationExpression="^\d+(\.\d{1,2})?$"
-                            ErrorMessage="Please enter a valid amount"
-                            CssClass="error-message" />
-                    </div>
-                    
-                    <div class="form-group">
-                        <asp:Button ID="btnCalculate" runat="server" Text="Calculate Risk" 
-                            CssClass="btn btn-primary" OnClick="btnCalculate_Click" />
-                    </div>
-                </asp:Panel>
+                <rc:VarCalculationControl ID="varCalcControl" runat="server" 
+                    OnVaRCalculated="VarCalcControl_VaRCalculated" 
+                    OnCalculationReset="VarCalcControl_CalculationReset" />
                 
-                <asp:Panel ID="pnlResults" runat="server" CssClass="results-panel" Visible="false">
-                    <h3>Risk Analysis for <asp:Label ID="lblSymbol" runat="server"></asp:Label></h3>
-                    
-                    <table class="results-table">
+                <div class="calculation-stats">
+                    <h4>Calculation Statistics</h4>
+                    <table class="stats-table">
                         <tr>
-                            <td>Investment Amount</td>
-                            <td><asp:Label ID="lblAmount" runat="server"></asp:Label></td>
+                            <td>Total Calculations This Session:</td>
+                            <td><asp:Label ID="lblTotalCalculations" runat="server"></asp:Label></td>
                         </tr>
                         <tr>
-                            <td>Daily VaR (95%)</td>
-                            <td><asp:Label ID="lblVaR" runat="server"></asp:Label></td>
+                            <td>Last Calculation Time:</td>
+                            <td><asp:Label ID="lblLastCalculationTime" runat="server"></asp:Label></td>
                         </tr>
                         <tr>
-                            <td>Credit Risk Score</td>
-                            <td><asp:Label ID="lblCreditRisk" runat="server"></asp:Label></td>
-                        </tr>
-                        <tr>
-                            <td>Risk Level</td>
-                            <td><asp:Label ID="lblRiskLevel" runat="server" CssClass="risk-level"></asp:Label></td>
+                            <td>Session Duration:</td>
+                            <td><asp:Label ID="lblSessionDuration" runat="server"></asp:Label></td>
                         </tr>
                     </table>
-                    
-                    <div class="form-group">
-                        <asp:Button ID="btnNewCalculation" runat="server" Text="New Calculation" 
-                            CssClass="btn btn-secondary" OnClick="btnNewCalculation_Click" />
-                    </div>
-                </asp:Panel>
-                
-                <div class="error-panel">
-                    <asp:Label ID="lblError" runat="server" CssClass="error-message" Visible="false"></asp:Label>
                 </div>
             </div>
             

@@ -1,4 +1,6 @@
 <%@ Page Language="C#" AutoEventWireup="true" CodeBehind="Portfolio.aspx.cs" Inherits="RiskCalculatorWebForm.Portfolio" %>
+<%@ Register Src="~/Controls/NavigationControl.ascx" TagName="NavigationControl" TagPrefix="rc" %>
+<%@ Register Src="~/Controls/PortfolioGridControl.ascx" TagName="PortfolioGridControl" TagPrefix="rc" %>
 
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -10,37 +12,33 @@
     <form id="form1" runat="server">
         <div class="container">
             <header>
-                <h2>Current Portfolio Holdings</h2>
+                <h2>Portfolio Analysis Dashboard</h2>
             </header>
             
+            <rc:NavigationControl ID="navControl" runat="server" />
+            
             <div class="content">
-                <asp:GridView ID="gvPortfolio" runat="server" CssClass="portfolio-grid" 
-                    AutoGenerateColumns="false" GridLines="Both">
-                    <Columns>
-                        <asp:BoundField DataField="Symbol" HeaderText="Symbol" />
-                        <asp:BoundField DataField="Value" HeaderText="Value ($)" DataFormatString="{0:N2}" />
-                        <asp:BoundField DataField="DailyVaR" HeaderText="Daily VaR" DataFormatString="{0:N2}" />
-                        <asp:BoundField DataField="RiskPercentage" HeaderText="Risk %" DataFormatString="{0:F2}%" />
-                    </Columns>
-                    <HeaderStyle CssClass="grid-header" />
-                    <RowStyle CssClass="grid-row" />
-                    <AlternatingRowStyle CssClass="grid-alt-row" />
-                </asp:GridView>
+                <rc:PortfolioGridControl ID="portfolioGridControl" runat="server" 
+                    OnPortfolioDataLoaded="PortfolioGridControl_PortfolioDataLoaded" />
                 
-                <div class="portfolio-summary">
-                    <h3>Portfolio Summary</h3>
-                    <table class="summary-table">
+                <div class="portfolio-insights">
+                    <h4>Portfolio Insights</h4>
+                    <table class="insights-table">
                         <tr>
-                            <td>Total Portfolio Value:</td>
-                            <td><asp:Label ID="lblTotalValue" runat="server" CssClass="summary-value"></asp:Label></td>
+                            <td>Portfolio Last Updated:</td>
+                            <td><asp:Label ID="lblLastUpdated" runat="server"></asp:Label></td>
                         </tr>
                         <tr>
-                            <td>Total Daily VaR:</td>
-                            <td><asp:Label ID="lblTotalVaR" runat="server" CssClass="summary-value"></asp:Label></td>
+                            <td>Number of Holdings:</td>
+                            <td><asp:Label ID="lblHoldingsCount" runat="server"></asp:Label></td>
                         </tr>
                         <tr>
-                            <td>Portfolio Risk Ratio:</td>
-                            <td><asp:Label ID="lblRiskRatio" runat="server" CssClass="summary-value"></asp:Label></td>
+                            <td>Highest Risk Holding:</td>
+                            <td><asp:Label ID="lblHighestRisk" runat="server"></asp:Label></td>
+                        </tr>
+                        <tr>
+                            <td>Lowest Risk Holding:</td>
+                            <td><asp:Label ID="lblLowestRisk" runat="server"></asp:Label></td>
                         </tr>
                     </table>
                 </div>

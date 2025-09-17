@@ -1,4 +1,6 @@
 <%@ Page Language="C#" AutoEventWireup="true" CodeBehind="MonteCarlo.aspx.cs" Inherits="RiskCalculatorWebForm.MonteCarlo" %>
+<%@ Register Src="~/Controls/NavigationControl.ascx" TagName="NavigationControl" TagPrefix="rc" %>
+<%@ Register Src="~/Controls/MonteCarloControl.ascx" TagName="MonteCarloControl" TagPrefix="rc" %>
 
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -10,58 +12,35 @@
     <form id="form1" runat="server">
         <div class="container">
             <header>
-                <h2>Monte Carlo Risk Simulation</h2>
+                <h2>Monte Carlo Risk Simulation Dashboard</h2>
             </header>
             
+            <rc:NavigationControl ID="navControl" runat="server" />
+            
             <div class="content">
-                <div class="simulation-controls">
-                    <div class="form-group">
-                        <label for="txtSimulations">Number of Simulations:</label>
-                        <asp:TextBox ID="txtSimulations" runat="server" CssClass="form-control" Text="1000"></asp:TextBox>
-                        <asp:RegularExpressionValidator ID="revSimulations" runat="server" 
-                            ControlToValidate="txtSimulations" 
-                            ValidationExpression="^\d+$"
-                            ErrorMessage="Please enter a valid number"
-                            CssClass="error-message" />
-                    </div>
-                    
-                    <div class="form-group">
-                        <asp:Button ID="btnRunSimulation" runat="server" Text="Run Simulation" 
-                            CssClass="btn btn-primary" OnClick="btnRunSimulation_Click" />
-                    </div>
-                </div>
+                <rc:MonteCarloControl ID="monteCarloControl" runat="server" 
+                    OnSimulationCompleted="MonteCarloControl_SimulationCompleted" />
                 
-                <asp:Panel ID="pnlResults" runat="server" CssClass="results-panel" Visible="false">
-                    <div class="simulation-info">
-                        <p>Running <asp:Label ID="lblSimulationCount" runat="server"></asp:Label> simulations for portfolio risk scenarios...</p>
-                    </div>
-                    
-                    <table class="results-table">
+                <div class="simulation-statistics">
+                    <h4>Simulation Statistics</h4>
+                    <table class="stats-table">
                         <tr>
-                            <td>Simulations Run</td>
-                            <td><asp:Label ID="lblSimulationsRun" runat="server"></asp:Label></td>
+                            <td>Total Simulations This Session:</td>
+                            <td><asp:Label ID="lblTotalSimulations" runat="server"></asp:Label></td>
                         </tr>
                         <tr>
-                            <td>95% VaR (Daily)</td>
-                            <td><asp:Label ID="lblVaR95" runat="server"></asp:Label></td>
+                            <td>Last Simulation Time:</td>
+                            <td><asp:Label ID="lblLastSimulationTime" runat="server"></asp:Label></td>
                         </tr>
                         <tr>
-                            <td>99% VaR (Daily)</td>
-                            <td><asp:Label ID="lblVaR99" runat="server"></asp:Label></td>
+                            <td>Average Simulation Time:</td>
+                            <td><asp:Label ID="lblAverageSimulationTime" runat="server"></asp:Label></td>
                         </tr>
                         <tr>
-                            <td>Expected Return</td>
-                            <td><asp:Label ID="lblExpectedReturn" runat="server"></asp:Label></td>
+                            <td>Fastest Simulation:</td>
+                            <td><asp:Label ID="lblFastestSimulation" runat="server"></asp:Label></td>
                         </tr>
                     </table>
-                    
-                    <div class="chart-placeholder">
-                        <p><i>Chart visualization would be displayed here in a production application</i></p>
-                    </div>
-                </asp:Panel>
-                
-                <div class="error-panel">
-                    <asp:Label ID="lblError" runat="server" CssClass="error-message" Visible="false"></asp:Label>
                 </div>
             </div>
             
