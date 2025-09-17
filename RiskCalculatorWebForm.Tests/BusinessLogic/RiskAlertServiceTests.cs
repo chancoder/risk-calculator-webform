@@ -4,7 +4,9 @@ using RiskCalculatorWebForm.Tests.TestUtilities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Web;
+using Microsoft.AspNetCore.Http;
+using Moq;
+
 
 namespace RiskCalculatorWebForm.Tests.BusinessLogic
 {
@@ -12,18 +14,22 @@ namespace RiskCalculatorWebForm.Tests.BusinessLogic
     public class RiskAlertServiceTests
     {
         private RiskAlertService _alertService;
-        private HttpContextBase _mockHttpContext;
+        private HttpContext _mockHttpContext;
+        private IHttpContextAccessor _httpContextAccessor;
 
         [TestInitialize]
         public void Setup()
         {
             _mockHttpContext = MockHttpContext.CreateMockHttpContext();
+
+            // Setup HttpContextAccessor with the mock HttpContext
+            _httpContextAccessor = new HttpContextAccessor
+            {
+                HttpContext = _mockHttpContext
+            };
+
             _alertService = new RiskAlertService();
-            
-            // Set the HttpContext for the service
-            HttpContext.Current = new HttpContext(
-                new HttpRequest("", "http://localhost/test.aspx", ""),
-                new HttpResponse(null));
+// The service should be using IHttpContextAccessor instead of HttpContext.Current
         }
 
         [TestMethod]
@@ -183,11 +189,11 @@ namespace RiskCalculatorWebForm.Tests.BusinessLogic
 
             // Assert
             Assert.AreEqual(expectedOrder.Count, actualAlerts.Count, "Should maintain count");
-            
+
             // Check that alerts are in the order they were added (FIFO)
             for (int i = 0; i < expectedOrder.Count; i++)
             {
-                Assert.AreEqual(expectedOrder[i], actualAlerts[i], 
+                Assert.AreEqual(expectedOrder[i], actualAlerts[i],
                     $"Alert at position {i} should match expected order");
             }
         }

@@ -1,0 +1,13 @@
+{
+  "RiskCalculatorWebForm": [
+    "Microsoft.AspNetCore.SystemWebAdapters.FrameworkServices",
+    "Microsoft.AspNetCore.Session",
+    "Microsoft.AspNetCore.SystemWebAdapters.CoreServices",
+    "Microsoft.AspNetCore.SystemWebAdapters.Abstractions"
+  ],
+  "RiskCalculatorWebForm.Tests": [
+    "Microsoft.AspNetCore.SystemWebAdapters.FrameworkServices",
+    "MSTest.TestFramework",
+    "MSTest.TestAdapter"
+  ]
+}

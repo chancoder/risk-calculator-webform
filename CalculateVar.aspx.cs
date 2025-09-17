@@ -1,19 +1,25 @@
 using System;
-using System.Web.UI;
+using System.Web;
+using Microsoft.AspNetCore.Http;
 using RiskCalculatorWebForm.Controls;
+using Microsoft.AspNetCore.SystemWebAdapters;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http.Extensions;
+
 
 namespace RiskCalculatorWebForm
 {
-    public partial class CalculateVar : System.Web.UI.Page
-    {
+    public partial class CalculateVar : Controller {
+        RequestDelegate _next = null;
         protected void Page_Load(object sender, EventArgs e)
         {
-            if (!IsPostBack)
+            if (HttpContext.Request.Method != "POST")
             {
                 // Initialize SessionState tracking
-                Session["SessionStartTime"] = DateTime.Now;
-                Session["TotalCalculations"] = 0;
-                
+                HttpContext.Session.SetString("SessionStartTime", DateTime.Now.ToString("o"));
+                HttpContext.Session.SetInt32("TotalCalculations", 0);
+
                 UpdateStatistics();
             }
             else
@@ -26,13 +32,13 @@ namespace RiskCalculatorWebForm
         {
             // Handle VaR calculation event from the control
             var result = e.Result;
-            
+
             // Update session statistics
-            int totalCalculations = (int)Session["TotalCalculations"];
-            Session["TotalCalculations"] = totalCalculations + 1;
-            Session["LastCalculationTime"] = DateTime.Now;
-            Session["LastCalculationResult"] = result;
-            
+            int totalCalculations = HttpContext.Session.GetInt32("TotalCalculations") ?? 0;
+            HttpContext.Session.SetInt32("TotalCalculations", totalCalculations + 1);
+            HttpContext.Session.SetString("LastCalculationTime", DateTime.Now.ToString("o"));
+            HttpContext.Session.SetString("LastCalculationResult", result.ToString());
+
             // Update statistics display
             UpdateStatistics();
         }
@@ -46,27 +52,34 @@ namespace RiskCalculatorWebForm
         private void UpdateStatistics()
         {
             // Update total calculations
-            int totalCalculations = Session["TotalCalculations"] != null ? (int)Session["TotalCalculations"] : 0;
-            lblTotalCalculations.Text = totalCalculations.ToString();
-            
+            int totalCalculations = HttpContext.Session.GetInt32("TotalCalculations") ?? 0;
+            ViewData["TotalCalculations"] = totalCalculations.ToString();
+
             // Update last calculation time
-            if (Session["LastCalculationTime"] != null)
+            var lastCalcTimeStr = HttpContext.Session.GetString("LastCalculationTime");
+            if (!string.IsNullOrEmpty(lastCalcTimeStr))
             {
-                DateTime lastCalcTime = (DateTime)Session["LastCalculationTime"];
-                lblLastCalculationTime.Text = lastCalcTime.ToString("yyyy-MM-dd HH:mm:ss");
+                DateTime lastCalcTime = DateTime.Parse(lastCalcTimeStr);
+                ViewData["LastCalculationTime"] = lastCalcTime.ToString("yyyy-MM-dd HH:mm:ss");
             }
             else
             {
-                lblLastCalculationTime.Text = "No calculations yet";
+                ViewData["LastCalculationTime"] = "No calculations yet";
             }
-            
+
             // Update session duration
-            if (Session["SessionStartTime"] != null)
+            var sessionStartStr = HttpContext.Session.GetString("SessionStartTime");
+            if (!string.IsNullOrEmpty(sessionStartStr))
             {
-                DateTime sessionStart = (DateTime)Session["SessionStartTime"];
+                DateTime sessionStart = DateTime.Parse(sessionStartStr);
                 TimeSpan duration = DateTime.Now - sessionStart;
-                lblSessionDuration.Text = $"{duration.Hours:D2}:{duration.Minutes:D2}:{duration.Seconds:D2}";
+                ViewData["SessionDuration"] = $"{duration.Hours:D2}:{duration.Minutes:D2}:{duration.Seconds:D2}";
             }
+        }
+
+        public CalculateVar(RequestDelegate next)
+        {
+            _next = next;
         }
     }
 }

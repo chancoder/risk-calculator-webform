@@ -1,13 +1,14 @@
 using System;
-using System.Web.UI;
+using Microsoft.AspNetCore.Components;
 
 namespace RiskCalculatorWebForm.Controls
 {
-    public partial class NavigationControl : System.Web.UI.UserControl
+    public partial class NavigationControl : ComponentBase
     {
-        protected void Page_Load(object sender, EventArgs e)
+        protected override void OnInitialized()
         {
             // Navigation control initialization if needed
+            base.OnInitialized();
         }
     }
 }

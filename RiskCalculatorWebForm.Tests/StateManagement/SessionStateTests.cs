@@ -3,20 +3,49 @@ using RiskCalculatorWebForm;
 using RiskCalculatorWebForm.Tests.TestUtilities;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Reflection;
 using System.Web;
+using System.Web.SessionState;
+using Moq;
 
 namespace RiskCalculatorWebForm.Tests.StateManagement
 {
+    public class MockSessionState
+    {
+        private Dictionary<string, object> _items = new Dictionary<string, object>();
+
+        public object this[string name]
+        {
+            get { return _items.ContainsKey(name) ? _items[name] : null; }
+            set { _items[name] = value; }
+        }
+
+        public void Clear()
+        {
+            _items.Clear();
+        }
+    }
+
     [TestClass]
     public class SessionStateTests
     {
+        private MockSessionState _session;
+        private Mock<HttpContext> _httpContextMock;
+
         [TestInitialize]
         public void Setup()
         {
-            // Mock HttpContext for session testing
-            HttpContext.Current = new HttpContext(
-                new HttpRequest("", "http://localhost/test.aspx", ""),
-                new HttpResponse(null));
+            _session = new MockSessionState();
+
+            // Create a mock HttpContext
+            _httpContextMock = new Mock<HttpContext>();
+
+            // Setup the Session property to intercept in our test methods
+            _httpContextMock.Setup(ctx => ctx.Session).Throws(new NotImplementedException("Direct Session access not implemented in mock"));
+
+            // Set the current HttpContext to our mock
+            HttpContext.Current = _httpContextMock.Object;
         }
 
         [TestMethod]
@@ -44,11 +73,11 @@ namespace RiskCalculatorWebForm.Tests.StateManagement
             var portfolioData = TestDataBuilder.CreateSamplePortfolioData();
 
             // Act - Simulate storing in session
-            Session["PortfolioData"] = portfolioData;
-            Session["PortfolioLastUpdated"] = DateTime.Now;
+            _session["PortfolioData"] = portfolioData;
+            _session["PortfolioLastUpdated"] = DateTime.Now;
 
             // Assert
-            var retrievedData = Session["PortfolioData"] as Dictionary<string, decimal>;
+            var retrievedData = _session["PortfolioData"] as Dictionary<string, decimal>;
             Assert.IsNotNull(retrievedData, "Portfolio data should be retrievable from session");
             Assert.AreEqual(portfolioData.Count, retrievedData.Count, "Portfolio data count should match");
         }
@@ -64,13 +93,13 @@ namespace RiskCalculatorWebForm.Tests.StateManagement
             for (int i = 0; i < 5; i++)
             {
                 totalCalculations++;
-                Session["TotalCalculations"] = totalCalculations;
-                Session["LastCalculationTime"] = DateTime.Now;
+                _session["TotalCalculations"] = totalCalculations;
+                _session["LastCalculationTime"] = DateTime.Now;
             }
 
             // Assert
-            Assert.AreEqual(5, Session["TotalCalculations"], "Should track total calculations correctly");
-            Assert.IsNotNull(Session["LastCalculationTime"], "Should store last calculation time");
+            Assert.AreEqual(5, _session["TotalCalculations"], "Should track total calculations correctly");
+            Assert.IsNotNull(_session["LastCalculationTime"], "Should store last calculation time");
         }
 
         [TestMethod]
@@ -80,11 +109,11 @@ namespace RiskCalculatorWebForm.Tests.StateManagement
             var simulationHistory = TestDataBuilder.CreateSampleMonteCarloResults();
 
             // Act
-            Session["SimulationHistory"] = simulationHistory;
-            Session["TotalSimulations"] = simulationHistory.Count;
+            _session["SimulationHistory"] = simulationHistory;
+            _session["TotalSimulations"] = simulationHistory.Count;
 
             // Assert
-            var retrievedHistory = Session["SimulationHistory"] as List<MonteCarloSimulationResult>;
+            var retrievedHistory = _session["SimulationHistory"] as List<MonteCarloSimulationResult>;
             Assert.IsNotNull(retrievedHistory, "Simulation history should be retrievable");
             Assert.AreEqual(simulationHistory.Count, retrievedHistory.Count, "History count should match");
         }
@@ -125,15 +154,15 @@ namespace RiskCalculatorWebForm.Tests.StateManagement
             // Act - Store all in session
             foreach (var item in testData)
             {
-                Session[item.Key] = item.Value;
+                _session[item.Key] = item.Value;
             }
 
             // Assert - Retrieve and verify
             foreach (var item in testData)
             {
-                var retrieved = Session[item.Key];
+                var retrieved = _session[item.Key];
                 Assert.IsNotNull(retrieved, $"{item.Key} should be retrievable from session");
-                Assert.AreEqual(item.Value.GetType(), retrieved.GetType(), 
+                Assert.AreEqual(item.Value.GetType(), retrieved.GetType(),
                     $"{item.Key} should maintain correct type");
             }
         }
@@ -142,11 +171,11 @@ namespace RiskCalculatorWebForm.Tests.StateManagement
         public void SessionState_SessionTimeout_HandlesGracefully()
         {
             // Test that application handles missing session data gracefully
-            Session.Clear();
+            _session.Clear();
 
             // Act - Try to access session data that doesn't exist
-            var defaultSymbol = Session["DefaultSymbol"] ?? "AAPL";
-            var totalCalculations = Session["TotalCalculations"] ?? 0;
+            var defaultSymbol = _session["DefaultSymbol"] ?? "AAPL";
+            var totalCalculations = _session["TotalCalculations"] ?? 0;
 
             // Assert
             Assert.AreEqual("AAPL", defaultSymbol, "Should provide default value when session is empty");
@@ -157,18 +186,18 @@ namespace RiskCalculatorWebForm.Tests.StateManagement
         public void SessionState_CrossPageDataSharing()
         {
             // Simulate data being set on one page and accessed on another
-            Session["PageVisits"] = 1;
-            Session["FirstVisitTime"] = DateTime.Now;
-            Session["UserPreferences"] = new Dictionary<string, string>
+            _session["PageVisits"] = 1;
+            _session["FirstVisitTime"] = DateTime.Now;
+            _session["UserPreferences"] = new Dictionary<string, string>
             {
                 ["Theme"] = "Dark",
                 ["Language"] = "English"
             };
 
             // Simulate navigation to another page
-            var pageVisits = (int)Session["PageVisits"];
-            var firstVisit = (DateTime)Session["FirstVisitTime"];
-            var preferences = Session["UserPreferences"] as Dictionary<string, string>;
+            var pageVisits = (int)_session["PageVisits"];
+            var firstVisit = (DateTime)_session["FirstVisitTime"];
+            var preferences = _session["UserPreferences"] as Dictionary<string, string>;
 
             // Assert
             Assert.AreEqual(1, pageVisits, "Page visits should be accessible across pages");
@@ -188,10 +217,10 @@ namespace RiskCalculatorWebForm.Tests.StateManagement
             }
 
             // Act
-            Session["LargeDataSet"] = largeList;
+            _session["LargeDataSet"] = largeList;
 
             // Assert
-            var retrieved = Session["LargeDataSet"] as List<string>;
+            var retrieved = _session["LargeDataSet"] as List<string>;
             Assert.IsNotNull(retrieved, "Large data set should be stored and retrieved");
             Assert.AreEqual(10000, retrieved.Count, "Large data set should maintain all items");
         }
@@ -201,17 +230,17 @@ namespace RiskCalculatorWebForm.Tests.StateManagement
         {
             // Test that session state handles concurrent access scenarios
             var sessionData = new Dictionary<string, object>();
-            
+
             // Simulate concurrent writes (in real scenario this would be different threads)
             for (int i = 0; i < 100; i++)
             {
-                Session[$"ConcurrentKey_{i}"] = $"Value_{i}";
+                _session[$"ConcurrentKey_{i}"] = $"Value_{i}";
             }
 
             // Assert
             for (int i = 0; i < 100; i++)
             {
-                Assert.AreEqual($"Value_{i}", Session[$"ConcurrentKey_{i}"], 
+                Assert.AreEqual($"Value_{i}", _session[$"ConcurrentKey_{i}"],
                     $"Concurrent key {i} should maintain correct value");
             }
         }

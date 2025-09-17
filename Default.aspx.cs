@@ -1,44 +1,55 @@
 using System;
-using System.Web.UI;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.SystemWebAdapters;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+
 
 namespace RiskCalculatorWebForm
 {
-    public partial class Default : System.Web.UI.Page
+    public partial class Default : Controller
     {
+        RequestDelegate _next = null;
+
         protected void Page_Load(object sender, EventArgs e)
         {
-            if (!IsPostBack)
+            if (HttpContext.Request.Method != "POST")
             {
-                lblCurrentTime.Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                lblSessionId.Text = Session.SessionID;
-                
+                ViewData["CurrentTime"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                ViewData["SessionId"] = HttpContext.Session.Id;
+
                 // Initialize SessionState with default values
-                if (Session["DefaultSymbol"] == null)
+                if (HttpContext.Session.GetString("DefaultSymbol") == null)
                 {
-                    Session["DefaultSymbol"] = "AAPL";
+                    HttpContext.Session.SetString("DefaultSymbol", "AAPL");
                 }
-                if (Session["DefaultAmount"] == null)
+                if (HttpContext.Session.GetString("DefaultAmount") == null)
                 {
-                    Session["DefaultAmount"] = "100000";
+                    HttpContext.Session.SetString("DefaultAmount", "100000");
                 }
-                if (Session["DefaultSimulationCount"] == null)
+                if (HttpContext.Session.GetString("DefaultSimulationCount") == null)
                 {
-                    Session["DefaultSimulationCount"] = "1000";
+                    HttpContext.Session.SetString("DefaultSimulationCount", "1000");
                 }
-                
-                // Store page visit information in ViewState
-                ViewState["PageVisits"] = 1;
-                ViewState["FirstVisitTime"] = DateTime.Now;
+
+                // Store page visit information in TempData
+                TempData["PageVisits"] = 1;
+                TempData["FirstVisitTime"] = DateTime.Now;
             }
             else
             {
-                // Increment page visits in ViewState
-                int visits = (int)ViewState["PageVisits"];
-                ViewState["PageVisits"] = visits + 1;
-                
+                // Increment page visits in TempData
+                int visits = TempData.ContainsKey("PageVisits") ? (int)TempData["PageVisits"] : 0;
+                TempData["PageVisits"] = visits + 1;
+
                 // Update current time
-                lblCurrentTime.Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                ViewData["CurrentTime"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             }
+        }
+
+        public Default(RequestDelegate next)
+        {
+            _next = next;
         }
     }
 }

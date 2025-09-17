@@ -1,8 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Web;
 using System.Web.SessionState;
 using Moq;
+using Microsoft.AspNetCore.Http;
+using HttpContext = System.Web.HttpContext;
+using HttpSessionStateBase = System.Web.SessionState.HttpSessionState;
+
 
 namespace RiskCalculatorWebForm.Tests.TestUtilities
 {
@@ -11,13 +16,13 @@ namespace RiskCalculatorWebForm.Tests.TestUtilities
     /// </summary>
     public static class MockHttpContext
     {
-        public static HttpContextBase CreateMockHttpContext()
+        public static HttpContext CreateMockHttpContext()
         {
-            var mockContext = new Mock<HttpContextBase>();
-            var mockRequest = new Mock<HttpRequestBase>();
-            var mockResponse = new Mock<HttpResponseBase>();
-            var mockSession = new Mock<HttpSessionStateBase>();
-            var mockServer = new Mock<HttpServerUtilityBase>();
+            var mockContext = new Mock<HttpContext>();
+            var mockRequest = new Mock<System.Web.HttpRequest>();
+            var mockResponse = new Mock<System.Web.HttpResponse>();
+            var mockSession = new Mock<HttpSessionState>();
+            var mockServer = new Mock<HttpServerUtility>();
 
             // Setup request
             mockRequest.Setup(r => r.QueryString).Returns(new NameValueCollection());
@@ -30,7 +35,7 @@ namespace RiskCalculatorWebForm.Tests.TestUtilities
 
             // Setup session
             mockSession.Setup(s => s.SessionID).Returns("TestSessionId12345");
-            
+
             // Setup context
             mockContext.Setup(c => c.Request).Returns(mockRequest.Object);
             mockContext.Setup(c => c.Response).Returns(mockResponse.Object);
@@ -40,11 +45,28 @@ namespace RiskCalculatorWebForm.Tests.TestUtilities
             return mockContext.Object;
         }
 
-        public static HttpContextBase CreateMockHttpContextWithSession(Dictionary<string, object> sessionData = null)
+        public static HttpContext CreateMockHttpContextWithSession(Dictionary<string, object> sessionData = null)
         {
-            var mockContext = CreateMockHttpContext();
-            var mockSession = new Mock<HttpSessionStateBase>();
-            
+            var mockContext = new Mock<HttpContext>();
+            var mockRequest = new Mock<System.Web.HttpRequest>();
+            var mockResponse = new Mock<System.Web.HttpResponse>();
+            var mockSession = new Mock<HttpSessionState>();
+            var mockServer = new Mock<HttpServerUtility>();
+
+            // Setup request
+            mockRequest.Setup(r => r.QueryString).Returns(new NameValueCollection());
+            mockRequest.Setup(r => r.Form).Returns(new NameValueCollection());
+            mockRequest.Setup(r => r.Cookies).Returns(new HttpCookieCollection());
+            mockRequest.Setup(r => r.Url).Returns(new Uri("http://localhost:12345/Test.aspx"));
+
+            // Setup response
+            mockResponse.Setup(r => r.Cookies).Returns(new HttpCookieCollection());
+
+            // Setup context
+            mockContext.Setup(c => c.Request).Returns(mockRequest.Object);
+            mockContext.Setup(c => c.Response).Returns(mockResponse.Object);
+            mockContext.Setup(c => c.Server).Returns(mockServer.Object);
+
             // Setup session with data
             if (sessionData != null)
             {

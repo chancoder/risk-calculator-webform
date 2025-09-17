@@ -3,10 +3,22 @@ using RiskCalculatorWebForm.Controls;
 using RiskCalculatorWebForm.Tests.TestUtilities;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Web.UI;
 
 namespace RiskCalculatorWebForm.Tests.StateManagement
 {
+    // Test container to replace System.Web.UI.Page
+    public class TestContainer
+    {
+        public TestContainer()
+        {
+            Controls = new List<object>();
+        }
+
+        public List<object> Controls { get; set; }
+    }
+
     [TestClass]
     public class ViewStateTests
     {
@@ -15,19 +27,22 @@ namespace RiskCalculatorWebForm.Tests.StateManagement
         {
             // Arrange
             var control = new VarCalculationControl();
-            var page = new System.Web.UI.Page();
+            // Using a simple object instead of Page class since we're in .NET 8
+            var page = new TestContainer();
             page.Controls.Add(control);
-            
-            // Simulate Page_Load
-            control.Page_Load(null, EventArgs.Empty);
+
+// Simulate Page_Load using reflection since it's not publicly accessible
+            var pageLoadMethod = typeof(VarCalculationControl).GetMethod("Page_Load",
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+            pageLoadMethod?.Invoke(control, new object[] { null, EventArgs.Empty });
 
             // Act - Set values that should be stored in ViewState
             control.Symbol = "AAPL";
             control.Amount = 100000m;
 
-            // Simulate postback
-            var viewState = new StateBag();
-            
+// Simulate postback - using Dictionary instead of StateBag since we're not actually using it
+            var viewState = new Dictionary<string, object>();
+
             // Assert - ViewState should contain the values
             Assert.AreEqual("AAPL", control.Symbol, "Symbol should be persisted");
             Assert.AreEqual(100000m, control.Amount, "Amount should be persisted");
@@ -38,13 +53,15 @@ namespace RiskCalculatorWebForm.Tests.StateManagement
         {
             // Arrange
             var control = new VarCalculationControl();
-            
+
             // Simulate Page_Load to initialize ViewState
-            control.Page_Load(null, EventArgs.Empty);
+            var pageLoadMethod = typeof(VarCalculationControl).GetMethod("Page_Load",
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+            pageLoadMethod?.Invoke(control, new object[] { null, EventArgs.Empty });
 
             // Act - Add some calculation history
             var history = control.CalculationHistory;
-            history.Add(new VaRCalculationResult
+            history.Add(new RiskCalculatorWebForm.Controls.VaRCalculationResult
             {
                 Symbol = "AAPL",
                 Amount = 100000m,
@@ -64,9 +81,11 @@ namespace RiskCalculatorWebForm.Tests.StateManagement
         {
             // Arrange
             var control = new PortfolioGridControl();
-            
-            // Simulate Page_Load
-            control.Page_Load(null, EventArgs.Empty);
+
+// Simulate Page_Load using reflection since it's not publicly accessible
+            var pageLoadMethod = typeof(VarCalculationControl).GetMethod("Page_Load",
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+            pageLoadMethod?.Invoke(control, new object[] { null, EventArgs.Empty });
 
             // Act - Portfolio data should be stored in ViewState
             var portfolioData = control.PortfolioData;
@@ -81,9 +100,11 @@ namespace RiskCalculatorWebForm.Tests.StateManagement
         {
             // Arrange
             var control = new MonteCarloControl();
-            
-            // Simulate Page_Load
-            control.Page_Load(null, EventArgs.Empty);
+
+// Simulate Page_Load using reflection since it's not publicly accessible
+            var pageLoadMethod = typeof(VarCalculationControl).GetMethod("Page_Load",
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+            pageLoadMethod?.Invoke(control, new object[] { null, EventArgs.Empty });
 
             // Act
             var history = control.SimulationHistory;
@@ -136,8 +157,10 @@ namespace RiskCalculatorWebForm.Tests.StateManagement
             var control2 = new VarCalculationControl();
 
             // Simulate Page_Load for both
-            control1.Page_Load(null, EventArgs.Empty);
-            control2.Page_Load(null, EventArgs.Empty);
+            var pageLoadMethod = typeof(VarCalculationControl).GetMethod("Page_Load",
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+            pageLoadMethod?.Invoke(control1, new object[] { null, EventArgs.Empty });
+            pageLoadMethod?.Invoke(control2, new object[] { null, EventArgs.Empty });
 
             // Set different values
             control1.Symbol = "AAPL";

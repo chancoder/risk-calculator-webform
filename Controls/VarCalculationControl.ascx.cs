@@ -1,71 +1,119 @@
 using System;
-using System.Web.UI;
-using System.Web.UI.WebControls;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 
 namespace RiskCalculatorWebForm.Controls
 {
-    public partial class VarCalculationControl : System.Web.UI.UserControl
+    public partial class VarCalculationControl : ViewComponent
     {
         // Events for parent pages to handle
         public event EventHandler<VaRCalculationEventArgs> VaRCalculated;
         public event EventHandler CalculationReset;
 
+        // Use TempData to store values between requests
+        public ITempDataDictionary TempData { get; set; }
+
+        // Access to HTTP context and session
+        public IHttpContextAccessor HttpContextAccessor { get; set; }
+        private ISession Session => HttpContextAccessor?.HttpContext?.Session;
+
+        // Initialize state dictionary if needed
+        private void EnsureStateInitialized()
+        {
+            if (TempData["VarCalculationState"] == null)
+            {
+                TempData["VarCalculationState"] = new System.Collections.Generic.Dictionary<string, object>();
+            }
+        }
+
+        // Helper methods to get/set state
+        private void SetState(string key, object value)
+        {
+            EnsureStateInitialized();
+            var state = TempData["VarCalculationState"] as System.Collections.Generic.Dictionary<string, object>;
+            state[key] = value;
+            TempData["VarCalculationState"] = state;
+        }
+
+        private T GetState<T>(string key, T defaultValue = default)
+        {
+            EnsureStateInitialized();
+            var state = TempData["VarCalculationState"] as System.Collections.Generic.Dictionary<string, object>;
+            if (state.TryGetValue(key, out object value))
+            {
+                return (T)value;
+            }
+            return defaultValue;
+        }
+
         protected void Page_Load(object sender, EventArgs e)
         {
-            if (!IsPostBack)
+            if (HttpContextAccessor?.HttpContext?.Request?.Method != "POST")
             {
-                // Initialize ViewState values
-                ViewState["LastSymbol"] = string.Empty;
-                ViewState["LastAmount"] = 0m;
-                ViewState["CalculationHistory"] = new System.Collections.Generic.List<VaRCalculationResult>();
-                
+                // Initialize state values
+                SetState("LastSymbol", string.Empty);
+                SetState("LastAmount", 0m);
+                SetState("CalculationHistory", new System.Collections.Generic.List<VaRCalculationResult>());
+
                 // Set default values from SessionState if available
-                if (Session["DefaultSymbol"] != null)
+                if (Session != null)
                 {
-                    txtSymbol.Text = Session["DefaultSymbol"].ToString();
-                }
-                if (Session["DefaultAmount"] != null)
-                {
-                    txtAmount.Text = Session["DefaultAmount"].ToString();
+                    // Store values in state instead of directly in control properties
+                    // which don't exist in .NET Core
+                    if (Session.GetString("DefaultSymbol") != null)
+                    {
+                        SetState("Symbol", Session.GetString("DefaultSymbol"));
+                    }
+                    if (Session.GetString("DefaultAmount") != null)
+                    {
+                        SetState("Amount", Session.GetString("DefaultAmount"));
+                    }
                 }
             }
         }
 
         protected void Page_PreRender(object sender, EventArgs e)
         {
-            // Store current values in ViewState for persistence
-            if (!string.IsNullOrEmpty(txtSymbol.Text))
+            // Store current values in TempData for persistence
+            var symbol = GetState<string>("Symbol", string.Empty);
+            if (!string.IsNullOrEmpty(symbol))
             {
-                ViewState["LastSymbol"] = txtSymbol.Text;
+                SetState("LastSymbol", symbol);
             }
-            if (!string.IsNullOrEmpty(txtAmount.Text))
+
+            var amountStr = GetState<string>("Amount", string.Empty);
+            if (!string.IsNullOrEmpty(amountStr))
             {
-                if (decimal.TryParse(txtAmount.Text, out decimal amount))
+                if (decimal.TryParse(amountStr, out decimal amount))
                 {
-                    ViewState["LastAmount"] = amount;
+                    SetState("LastAmount", amount);
                 }
             }
         }
 
         protected void btnCalculate_Click(object sender, EventArgs e)
         {
-            if (Page.IsValid)
+            // Removed Page.IsValid check as Page is not available in ASP.NET Core
             {
                 try
                 {
-                    string symbol = txtSymbol.Text.Trim().ToUpper();
-                    decimal amount = decimal.Parse(txtAmount.Text);
-                    
+                    string symbol = GetState<string>("Symbol", string.Empty).Trim().ToUpper();
+                    decimal amount = decimal.Parse(GetState<string>("Amount", "0"));
+
                     // Store in SessionState for cross-page persistence
-                    Session["LastCalculatedSymbol"] = symbol;
-                    Session["LastCalculatedAmount"] = amount;
-                    
+                    if (Session != null)
+                    {
+                        Session.SetString("LastCalculatedSymbol", symbol);
+                        Session.SetString("LastCalculatedAmount", amount.ToString());
+                    }
+
                     // Calculate VaR using business logic
                     var riskCalculator = new RiskCalculator();
                     decimal var = riskCalculator.CalculateVaR(symbol, amount);
                     decimal creditRisk = riskCalculator.CalculateCreditRisk(symbol);
                     string riskLevel = riskCalculator.GetRiskLevel(var / amount);
-                    
+
                     // Create result object
                     var result = new VaRCalculationResult
                     {
@@ -76,30 +124,30 @@ namespace RiskCalculatorWebForm.Controls
                         RiskLevel = riskLevel,
                         CalculatedAt = DateTime.Now
                     };
-                    
-                    // Store in ViewState for this control's history
-                    var history = ViewState["CalculationHistory"] as System.Collections.Generic.List<VaRCalculationResult>;
+
+                    // Store in TempData for this control's history
+                    var history = GetState<System.Collections.Generic.List<VaRCalculationResult>>("CalculationHistory");
                     if (history == null)
                     {
                         history = new System.Collections.Generic.List<VaRCalculationResult>();
                     }
                     history.Add(result);
-                    ViewState["CalculationHistory"] = history;
-                    
-                    // Update calculation count in ViewState
-                    int count = int.Parse(hfCalculationCount.Value);
+                    SetState("CalculationHistory", history);
+
+                    // Update calculation count in state
+                    int count = GetState<int>("CalculationCount", 0);
                     count++;
-                    hfCalculationCount.Value = count.ToString();
-                    
+                    SetState("CalculationCount", count);
+
                     // Display results
                     DisplayResults(result);
-                    
-                    // Store last calculation in hidden field
-                    hfLastCalculation.Value = $"{symbol}|{amount}|{var}|{creditRisk}|{riskLevel}";
-                    
+
+                    // Store last calculation in state
+                    SetState("LastCalculation", $"{symbol}|{amount}|{var}|{creditRisk}|{riskLevel}");
+
                     // Raise event for parent page
                     VaRCalculated?.Invoke(this, new VaRCalculationEventArgs(result));
-                    
+
                     // Check for high risk and add alert
                     if (var / amount > 0.05m)
                     {
@@ -113,90 +161,92 @@ namespace RiskCalculatorWebForm.Controls
                 }
             }
         }
-        
+
         protected void btnReset_Click(object sender, EventArgs e)
         {
             ResetForm();
             CalculationReset?.Invoke(this, EventArgs.Empty);
         }
-        
+
         protected void btnNewCalculation_Click(object sender, EventArgs e)
         {
             ResetForm();
         }
-        
+
         private void DisplayResults(VaRCalculationResult result)
         {
-            lblSymbol.Text = result.Symbol;
-            lblAmount.Text = string.Format("${0:N2}", result.Amount);
-            lblVaR.Text = string.Format("${0:N2}", result.VaR);
-            lblCreditRisk.Text = string.Format("{0:F1}/10", result.CreditRisk);
-            lblRiskLevel.Text = result.RiskLevel;
-            lblRiskLevel.CssClass = "risk-level " + result.RiskLevel.ToLower();
-            
-            pnlForm.Visible = false;
-            pnlResults.Visible = true;
-            lblError.Visible = false;
+            // Store results in state instead of directly in control properties
+            SetState("DisplayedSymbol", result.Symbol);
+            SetState("DisplayedAmount", string.Format("${0:N2}", result.Amount));
+            SetState("DisplayedVaR", string.Format("${0:N2}", result.VaR));
+            SetState("DisplayedCreditRisk", string.Format("{0:F1}/10", result.CreditRisk));
+            SetState("DisplayedRiskLevel", result.RiskLevel);
+            SetState("DisplayedRiskLevelClass", "risk-level " + result.RiskLevel.ToLower());
+
+            SetState("FormVisible", false);
+            SetState("ResultsVisible", true);
+            SetState("ErrorVisible", false);
         }
-        
+
         private void ResetForm()
         {
-            pnlForm.Visible = true;
-            pnlResults.Visible = false;
-            lblError.Visible = false;
-            
+            SetState("FormVisible", true);
+            SetState("ResultsVisible", false);
+            SetState("ErrorVisible", false);
+
             // Restore from SessionState if available
-            if (Session["DefaultSymbol"] != null)
+            if (Session != null && Session.GetString("DefaultSymbol") != null)
             {
-                txtSymbol.Text = Session["DefaultSymbol"].ToString();
+                SetState("Symbol", Session.GetString("DefaultSymbol"));
             }
             else
             {
-                txtSymbol.Text = "AAPL";
+                SetState("Symbol", "AAPL");
             }
-            
-            if (Session["DefaultAmount"] != null)
+
+            if (Session != null && Session.GetString("DefaultAmount") != null)
             {
-                txtAmount.Text = Session["DefaultAmount"].ToString();
+                SetState("Amount", Session.GetString("DefaultAmount"));
             }
             else
             {
-                txtAmount.Text = "100000";
+                SetState("Amount", "100000");
             }
         }
-        
+
         private void ShowError(string message)
         {
-            lblError.Text = message;
-            lblError.Visible = true;
-            pnlForm.Visible = true;
-            pnlResults.Visible = false;
+            SetState("ErrorMessage", message);
+            SetState("ErrorVisible", true);
+            SetState("FormVisible", true);
+            SetState("ResultsVisible", false);
         }
-        
+
         // Public properties for parent pages to access
         public string Symbol
         {
-            get { return txtSymbol.Text; }
-            set { txtSymbol.Text = value; }
+            get { return GetState<string>("Symbol", string.Empty); }
+            set { SetState("Symbol", value); }
         }
-        
+
         public decimal Amount
         {
-            get 
-            { 
-                return decimal.TryParse(txtAmount.Text, out decimal amount) ? amount : 0; 
+            get
+            {
+                var amountStr = GetState<string>("Amount", "0");
+                return decimal.TryParse(amountStr, out decimal amount) ? amount : 0;
             }
-            set { txtAmount.Text = value.ToString("F2"); }
+            set { SetState("Amount", value.ToString("F2")); }
         }
-        
+
         public int CalculationCount
         {
-            get { return int.Parse(hfCalculationCount.Value); }
+            get { return GetState<int>("CalculationCount", 0); }
         }
-        
+
         public System.Collections.Generic.List<VaRCalculationResult> CalculationHistory
         {
-            get { return ViewState["CalculationHistory"] as System.Collections.Generic.List<VaRCalculationResult> ?? new System.Collections.Generic.List<VaRCalculationResult>(); }
+            get { return GetState<System.Collections.Generic.List<VaRCalculationResult>>("CalculationHistory") ?? new System.Collections.Generic.List<VaRCalculationResult>(); }
         }
     }
 
@@ -204,7 +254,7 @@ namespace RiskCalculatorWebForm.Controls
     public class VaRCalculationEventArgs : EventArgs
     {
         public VaRCalculationResult Result { get; }
-        
+
         public VaRCalculationEventArgs(VaRCalculationResult result)
         {
             Result = result;
