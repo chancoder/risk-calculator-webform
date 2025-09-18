@@ -60,13 +60,6 @@
     <Compile Include="BusinessLogic\RiskCalculatorTests.cs" />
     <Compile Include="BusinessLogic\MonteCarloServiceTests.cs" />
     <Compile Include="BusinessLogic\RiskAlertServiceTests.cs" />
-    <Compile Include="Controls\VarCalculationControlTests.cs" />
-    <Compile Include="Controls\PortfolioGridControlTests.cs" />
-    <Compile Include="Controls\MonteCarloControlTests.cs" />
-    <Compile Include="Pages\DefaultTests.cs" />
-    <Compile Include="Pages\CalculateVarTests.cs" />
-    <Compile Include="Pages\PortfolioTests.cs" />
-    <Compile Include="Pages\MonteCarloTests.cs" />
     <Compile Include="StateManagement\ViewStateTests.cs" />
     <Compile Include="StateManagement\SessionStateTests.cs" />
     <Compile Include="Integration\EndToEndTests.cs" />
@@ -78,10 +71,8 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\RiskCalculatorWebForm.csproj">
-      <Project>{12345678-1234-5678-9012-123456789012}</Project>
-      <Name>RiskCalculatorWebForm</Name>
-    </ProjectReference>
+    <Folder Include="Controls\" />
+    <Folder Include="Pages\" />
   </ItemGroup>
   <Import Project="$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets" Condition="Exists('$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets')" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

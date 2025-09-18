@@ -1,0 +1,2 @@
+C:\Users\czaw\projects\risk-calculator-webform\RiskCalculatorWebForm.Tests\obj\Debug\RiskCalculatorWebForm.Tests.csproj.AssemblyReference.cache
+C:\Users\czaw\projects\risk-calculator-webform\RiskCalculatorWebForm.Tests\obj\Debug\RiskCalculatorWebForm.Tests.csproj.CoreCompileInputs.cache
