@@ -1,10 +1,10 @@
 # Risk Calculator - ASP.NET Web Forms Application v2.1
 
-This project is a modernized conversion of a legacy Python 2.7 risk calculator application to ASP.NET Web Forms with enhanced features including ASCX user controls, ViewState/SessionState management, and comprehensive unit testing.
+This project is a risk calculator application using ASP.NET Web Forms with enhanced features including ASCX user controls, ViewState/SessionState management, and comprehensive unit testing.
 
 ## Project Overview
 
-The original Python application was a CGI-based financial risk management system that provided:
+The application is a CGI-based financial risk management system that provided:
 - Value at Risk (VaR) calculations
 - Portfolio analysis
 - Monte Carlo simulations
