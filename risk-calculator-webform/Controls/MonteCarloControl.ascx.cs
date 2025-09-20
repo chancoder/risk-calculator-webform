@@ -17,6 +17,7 @@ namespace RiskCalculatorWebForm.Controls
         {
             if (!IsPostBack)
             {
+                
                 // Initialize ViewState
                 ViewState["SimulationHistory"] = new List<MonteCarloSimulationResult>();
                 ViewState["LastSimulationCount"] = 0;

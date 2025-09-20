@@ -7,6 +7,7 @@
         <div class="form-group">
             <label for="txtSimulations">Number of Simulations:</label>
             <asp:TextBox ID="txtSimulations" runat="server" CssClass="form-control"></asp:TextBox>
+            <asp:TextBox ID="txtTestChan" runat="server" />
             <asp:RequiredFieldValidator ID="rfvSimulations" runat="server" 
                 ControlToValidate="txtSimulations" 
                 ErrorMessage="Number of simulations is required"

@@ -9,8 +9,11 @@
 
 namespace RiskCalculatorWebForm
 {
+
+
     public partial class CalculateVar
     {
+
         /// <summary>
         /// form1 control.
         /// </summary>
@@ -21,121 +24,49 @@ namespace RiskCalculatorWebForm
         protected global::System.Web.UI.HtmlControls.HtmlForm form1;
 
         /// <summary>
-        /// pnlForm control.
+        /// navControl control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Panel pnlForm;
+        protected global::RiskCalculatorWebForm.Controls.NavigationControl navControl;
 
         /// <summary>
-        /// txtSymbol control.
+        /// varCalcControl control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.TextBox txtSymbol;
+        protected global::RiskCalculatorWebForm.Controls.VarCalculationControl varCalcControl;
 
         /// <summary>
-        /// txtAmount control.
+        /// lblTotalCalculations control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.TextBox txtAmount;
+        protected global::System.Web.UI.WebControls.Label lblTotalCalculations;
 
         /// <summary>
-        /// revAmount control.
+        /// lblLastCalculationTime control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.RegularExpressionValidator revAmount;
+        protected global::System.Web.UI.WebControls.Label lblLastCalculationTime;
 
         /// <summary>
-        /// btnCalculate control.
+        /// lblSessionDuration control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Button btnCalculate;
-
-        /// <summary>
-        /// pnlResults control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Panel pnlResults;
-
-        /// <summary>
-        /// lblSymbol control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblSymbol;
-
-        /// <summary>
-        /// lblAmount control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblAmount;
-
-        /// <summary>
-        /// lblVaR control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblVaR;
-
-        /// <summary>
-        /// lblCreditRisk control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblCreditRisk;
-
-        /// <summary>
-        /// lblRiskLevel control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblRiskLevel;
-
-        /// <summary>
-        /// btnNewCalculation control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Button btnNewCalculation;
-
-        /// <summary>
-        /// lblError control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblError;
+        protected global::System.Web.UI.WebControls.Label lblSessionDuration;
 
         /// <summary>
         /// lnkBack control.
