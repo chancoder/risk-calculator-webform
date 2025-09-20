@@ -1,5 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using RiskCalculatorWebForm;
+using risk_calculator_webapp;
 using RiskCalculatorWebForm.Tests.TestUtilities;
 using System;
 using System.Collections.Generic;
@@ -29,7 +29,7 @@ namespace RiskCalculatorWebForm.Tests.BusinessLogic
             decimal actualVaR = _riskCalculator.CalculateVaR(symbol, amount);
 
             // Assert
-            Assert.AreEqual(expectedVaR, actualVaR, 0.01m, "VaR calculation should match expected formula");
+            Assert.AreEqual(expectedVaR, actualVaR, "VaR calculation should match expected formula");
         }
 
         [TestMethod]

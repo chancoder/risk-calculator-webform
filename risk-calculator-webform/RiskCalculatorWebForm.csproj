@@ -161,12 +161,12 @@
     <Compile Include="CalculateVar.aspx.designer.cs">
       <DependentUpon>CalculateVar.aspx</DependentUpon>
     </Compile>
-    <Compile Include="Controls\NavigationControl.ascx.cs">
-      <DependentUpon>NavigationControl.ascx</DependentUpon>
-      <SubType>ASPXCodeBehind</SubType>
-    </Compile>
     <Compile Include="Controls\MonteCarloControl.ascx.cs">
       <DependentUpon>MonteCarloControl.ascx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Controls\NavigationControl.ascx.cs">
+      <DependentUpon>NavigationControl.ascx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
     <Compile Include="Controls\PortfolioGridControl.ascx.cs">

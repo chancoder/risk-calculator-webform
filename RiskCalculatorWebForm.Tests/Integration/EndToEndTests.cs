@@ -1,6 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using RiskCalculatorWebForm;
-using RiskCalculatorWebForm.Controls;
+using risk_calculator_webapp;
+using risk_calculator_webapp.Controls;
 using RiskCalculatorWebForm.Tests.TestUtilities;
 using System;
 using System.Collections.Generic;
@@ -177,7 +177,7 @@ namespace RiskCalculatorWebForm.Tests.Integration
             {
                 ["LastSymbol"] = "AAPL",
                 ["LastAmount"] = 100000m,
-                ["CalculationHistory"] = new List<VaRCalculationResult>()
+                ["CalculationHistory"] = new List<TestUtilities.VaRCalculationResult>()
             };
             
             foreach (var item in viewStateData)
