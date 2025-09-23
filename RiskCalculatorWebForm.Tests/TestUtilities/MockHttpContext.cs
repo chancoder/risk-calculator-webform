@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Web;
 using System.Web.SessionState;
@@ -41,8 +42,8 @@ namespace RiskCalculatorWebForm.Tests.TestUtilities
         }
 
         public static HttpContextBase CreateMockHttpContextWithSession(Dictionary<string, object> sessionData = null)
-        {
-            var mockContext = CreateMockHttpContext();
+        {            
+            var mockContext = new Mock<HttpContextBase>();
             var mockSession = new Mock<HttpSessionStateBase>();
             
             // Setup session with data
