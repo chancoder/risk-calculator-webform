@@ -1,0 +1,181 @@
+@namespace risk.calculator.webapp.Components.Pages.Portfolio
+
+<FileContent>
+@page "/Portfolio"
+@rendermode InteractiveServer
+@using System.Collections.Generic
+@using System.Linq
+@using Microsoft.Extensions.Logging
+@using risk_calculator_webapp.Components
+
+<PageTitle>Portfolio View - Risk Calculator</PageTitle>
+
+<link href="Content/Site.css" rel="stylesheet" type="text/css" />
+
+<div class="container">
+    <header>
+        <h2>Portfolio Analysis Dashboard</h2>
+    </header>
+
+    <NavigationControl />
+
+    <div class="content">
+        <PortfolioGridControl OnPortfolioDataLoaded="@HandlePortfolioDataLoaded" />
+
+        <div class="portfolio-insights">
+            <h4>Portfolio Insights</h4>
+            <table class="insights-table">
+                <tr>
+                    <td>Portfolio Last Updated:</td>
+                    <td>@lastUpdatedText</td>
+                </tr>
+                <tr>
+                    <td>Number of Holdings:</td>
+                    <td>@holdingsCountText</td>
+                </tr>
+                <tr>
+                    <td>Highest Risk Holding:</td>
+                    <td>@highestRiskText</td>
+                </tr>
+                <tr>
+                    <td>Lowest Risk Holding:</td>
+                    <td>@lowestRiskText</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <a href="/Default" class="nav-link">
+            ← Back to Main
+        </a>
+    </nav>
+</div>
+
+@code {
+    [Inject] private ILogger<Portfolio> Logger { get; set; } = default!;
+
+    public class PortfolioDataEventArgs : EventArgs
+    {
+        public Dictionary<string, decimal> Holdings { get; set; } = new();
+        public decimal TotalValue { get; set; }
+        public decimal TotalVaR { get; set; }
+        public decimal RiskRatio { get; set; }
+        public DateTime LastUpdated { get; set; }
+    }
+
+    private Dictionary<string, object> portfolioInsights = new();
+    private DateTime lastAnalysisTime;
+    private int portfolioViewCount = 0;
+    private DateTime? lastPortfolioView;
+    private Dictionary<string, decimal> lastPortfolioData = new();
+
+    private string lastUpdatedText = "No data available";
+    private string holdingsCountText = "0";
+    private string highestRiskText = "N/A";
+    private string lowestRiskText = "N/A";
+
+    protected override void OnInitialized()
+    {
+        // Initialize portfolio insights
+        portfolioInsights = new Dictionary<string, object>();
+        lastAnalysisTime = DateTime.Now;
+
+        UpdatePortfolioInsights();
+    }
+
+    private void HandlePortfolioDataLoaded()
+    {
+        // Create mock event args since the EventCallback doesn't pass parameters
+        var mockEventArgs = new PortfolioDataEventArgs
+        {
+            Holdings = new Dictionary<string, decimal>(),
+            TotalValue = 0,
+            TotalVaR = 0,
+            RiskRatio = 0,
+            LastUpdated = DateTime.Now
+        };
+        HandlePortfolioDataLoadedInternal(mockEventArgs);
+    }
+
+    private void HandlePortfolioDataLoadedInternal(PortfolioDataEventArgs e)
+    {
+        try
+        {
+            // Handle portfolio data loaded event from the control
+            var portfolioData = e.Holdings;
+
+            // Update session statistics
+            portfolioViewCount++;
+            lastPortfolioView = DateTime.Now;
+            lastPortfolioData = portfolioData;
+
+            // Store insights
+            portfolioInsights = new Dictionary<string, object>
+            {
+                ["TotalValue"] = e.TotalValue,
+                ["TotalVaR"] = e.TotalVaR,
+                ["RiskRatio"] = e.RiskRatio,
+                ["HoldingsCount"] = portfolioData.Count,
+                ["LastUpdated"] = e.LastUpdated
+            };
+
+            // Find highest and lowest risk holdings
+            var riskCalculator = new RiskCalculator();
+            var riskAnalysis = new List<(string Symbol, decimal RiskRatio)>();
+
+            foreach (var holding in portfolioData)
+            {
+                decimal var = riskCalculator.CalculateVaR(holding.Key, holding.Value);
+                decimal riskRatio = (var / holding.Value) * 100;
+                riskAnalysis.Add((holding.Key, riskRatio));
+            }
+
+            if (riskAnalysis.Any())
+            {
+                var highestRisk = riskAnalysis.OrderByDescending(x => x.RiskRatio).First();
+                var lowestRisk = riskAnalysis.OrderBy(x => x.RiskRatio).First();
+
+                portfolioInsights["HighestRiskHolding"] = $"{highestRisk.Symbol} ({highestRisk.RiskRatio:F2}%)";
+                portfolioInsights["LowestRiskHolding"] = $"{lowestRisk.Symbol} ({lowestRisk.RiskRatio:F2}%)";
+            }
+
+            lastAnalysisTime = DateTime.Now;
+
+            // Update display
+            UpdatePortfolioInsights();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error handling portfolio data loaded event");
+        }
+    }
+
+    private void UpdatePortfolioInsights()
+    {
+        if (portfolioInsights != null && portfolioInsights.Count > 0)
+        {
+            lastUpdatedText = portfolioInsights.ContainsKey("LastUpdated") ?
+                ((DateTime)portfolioInsights["LastUpdated"]).ToString("yyyy-MM-dd HH:mm:ss") :
+                "Never";
+
+            holdingsCountText = portfolioInsights.ContainsKey("HoldingsCount") ?
+                portfolioInsights["HoldingsCount"].ToString() : "0";
+
+            highestRiskText = portfolioInsights.ContainsKey("HighestRiskHolding") ?
+                portfolioInsights["HighestRiskHolding"].ToString() : "N/A";
+
+            lowestRiskText = portfolioInsights.ContainsKey("LowestRiskHolding") ?
+                portfolioInsights["LowestRiskHolding"].ToString() : "N/A";
+        }
+        else
+        {
+            lastUpdatedText = "No data available";
+            holdingsCountText = "0";
+            highestRiskText = "N/A";
+            lowestRiskText = "N/A";
+        }
+    }
+}
+</FileContent>

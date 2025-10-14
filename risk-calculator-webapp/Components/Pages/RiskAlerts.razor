@@ -1,0 +1,144 @@
+@namespace risk.calculator.webapp.Components.Pages.RiskAlerts
+
+<FileContent>
+@page "/RiskAlerts"
+@rendermode InteractiveServer
+@using Microsoft.Extensions.Logging
+@inject ILogger<RiskAlerts> Logger
+@inject IJSRuntime JSRuntime
+@inject RiskAlertService _alertService
+
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Risk Alerts - Risk Calculator</title>
+    <link href="Content/Site.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h2>Risk Alert System</h2>
+        </header>
+
+        <div class="content">
+            <div class="alerts-controls">
+                <button type="button" class="btn btn-danger" @onclick="@(() => ClearAlertsWithConfirmation())">
+                    Clear All Alerts
+                </button>
+            </div>
+
+            @if (showNoAlerts)
+            {
+                <div class="no-alerts-panel">
+                    <div class="alert alert-info">
+                        <strong>No Risk Alerts</strong>
+                        <p>No risk alerts at this time. The system will automatically generate alerts when risk thresholds are exceeded.</p>
+                    </div>
+                </div>
+            }
+
+            @if (showAlertsList)
+            {
+                <div class="alerts-list-panel">
+                    <h3>Active Risk Alerts</h3>
+                    @foreach (var alert in alertObjects)
+                    {
+                        <div class="alert alert-warning alert-item">
+                            <span class="alert-time">@alert.Time</span>
+                            <span class="alert-message">@alert.Message</span>
+                        </div>
+                    }
+                </div>
+            }
+
+            <div class="alert-stats">
+                <p><strong>Total Alerts:</strong> @alertCount</p>
+                <p><strong>Last Updated:</strong> @lastUpdated</p>
+            </div>
+        </div>
+
+        <nav class="bottom-nav">
+            <a href="/Default" class="nav-link">
+                ← Back to Main
+            </a>
+        </nav>
+    </div>
+</body>
+</html>
+
+@code {
+    private bool showNoAlerts = false;
+    private bool showAlertsList = false;
+    private List<AlertDisplayObject> alertObjects = new List<AlertDisplayObject>();
+    private string alertCount = "0";
+    private string lastUpdated = "";
+
+    protected override void OnInitialized()
+    {
+        LoadAlerts();
+    }
+
+    private void LoadAlerts()
+    {
+        try
+        {
+            var alerts = _alertService.GetAlerts();
+
+            if (alerts.Count == 0)
+            {
+                showNoAlerts = true;
+                showAlertsList = false;
+            }
+            else
+            {
+                showNoAlerts = false;
+                showAlertsList = true;
+
+                // Create alert objects with timestamps for display
+                alertObjects = new List<AlertDisplayObject>();
+                foreach (var alert in alerts)
+                {
+                    alertObjects.Add(new AlertDisplayObject { Message = alert, Time = DateTime.Now.ToString("HH:mm:ss") });
+                }
+            }
+
+            alertCount = alerts.Count.ToString();
+            lastUpdated = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading alerts");
+        }
+    }
+
+    private async Task ClearAlertsWithConfirmation()
+    {
+        // Using JavaScript for confirmation dialog
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", new object[] { "Are you sure you want to clear all alerts?" });
+        if (confirmed)
+        {
+            ClearAlerts();
+        }
+    }
+
+    private void ClearAlerts()
+    {
+        try
+        {
+            _alertService.ClearAlerts();
+            LoadAlerts();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error clearing alerts");
+        }
+    }
+
+    public class AlertDisplayObject
+    {
+        public string Message { get; set; }
+        public string Time { get; set; }
+    }
+}
+</FileContent>

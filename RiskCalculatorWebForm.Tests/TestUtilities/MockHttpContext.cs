@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.Web;
-using System.Web.SessionState;
 using Moq;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Primitives;
+
 
 namespace RiskCalculatorWebForm.Tests.TestUtilities
 {
@@ -12,50 +13,53 @@ namespace RiskCalculatorWebForm.Tests.TestUtilities
     /// </summary>
     public static class MockHttpContext
     {
-        public static HttpContextBase CreateMockHttpContext()
+        public static HttpContext CreateMockHttpContext()
         {
-            var mockContext = new Mock<HttpContextBase>();
-            var mockRequest = new Mock<HttpRequestBase>();
-            var mockResponse = new Mock<HttpResponseBase>();
-            var mockSession = new Mock<HttpSessionStateBase>();
-            var mockServer = new Mock<HttpServerUtilityBase>();
+            var mockContext = new Mock<HttpContext>();
+            var mockRequest = new Mock<HttpRequest>();
+            var mockResponse = new Mock<HttpResponse>();
+            var mockSession = new Mock<ISession>();
+            var mockCookies = new Mock<IRequestCookieCollection>();
+            var mockResponseCookies = new Mock<IResponseCookies>();
 
             // Setup request
-            mockRequest.Setup(r => r.QueryString).Returns(new NameValueCollection());
-            mockRequest.Setup(r => r.Form).Returns(new NameValueCollection());
-            mockRequest.Setup(r => r.Cookies).Returns(new HttpCookieCollection());
-            mockRequest.Setup(r => r.Url).Returns(new Uri("http://localhost:12345/Test.aspx"));
+            mockRequest.Setup(r => r.Query).Returns(new QueryCollection());
+            mockRequest.Setup(r => r.Form).Returns(new FormCollection(new Dictionary<string, StringValues>()));
+            mockRequest.Setup(r => r.Cookies).Returns(mockCookies.Object);
+            mockRequest.Setup(r => r.Scheme).Returns("http");
+            mockRequest.Setup(r => r.Host).Returns(new HostString("localhost:12345"));
+            mockRequest.Setup(r => r.Path).Returns("/Test.aspx");
 
             // Setup response
-            mockResponse.Setup(r => r.Cookies).Returns(new HttpCookieCollection());
+            mockResponse.Setup(r => r.Cookies).Returns(mockResponseCookies.Object);
 
             // Setup session
-            mockSession.Setup(s => s.SessionID).Returns("TestSessionId12345");
-            
+            mockSession.Setup(s => s.Id).Returns("TestSessionId12345");
+
             // Setup context
             mockContext.Setup(c => c.Request).Returns(mockRequest.Object);
             mockContext.Setup(c => c.Response).Returns(mockResponse.Object);
             mockContext.Setup(c => c.Session).Returns(mockSession.Object);
-            mockContext.Setup(c => c.Server).Returns(mockServer.Object);
 
             return mockContext.Object;
         }
 
-        public static HttpContextBase CreateMockHttpContextWithSession(Dictionary<string, object> sessionData = null)
-        {            
-            var mockContext = new Mock<HttpContextBase>();
-            var mockSession = new Mock<HttpSessionStateBase>();
-            
+        public static HttpContext CreateMockHttpContextWithSession(Dictionary<string, object> sessionData = null)
+        {
+            var mockContext = new Mock<HttpContext>();
+            var mockSession = new Mock<ISession>();
+
             // Setup session with data
             if (sessionData != null)
             {
                 foreach (var item in sessionData)
                 {
-                    mockSession.Setup(s => s[item.Key]).Returns(item.Value);
+                    byte[] value = System.Text.Encoding.UTF8.GetBytes(item.Value?.ToString() ?? "");
+                    mockSession.Setup(s => s.TryGetValue(item.Key, out value)).Returns(true);
                 }
             }
 
-            mockSession.Setup(s => s.SessionID).Returns("TestSessionId12345");
+            mockSession.Setup(s => s.Id).Returns("TestSessionId12345");
             mockContext.Setup(c => c.Session).Returns(mockSession.Object);
 
             return mockContext.Object;

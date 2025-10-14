@@ -1,0 +1,191 @@
+@namespace risk.calculator.webapp.Components.Pages.CalculateVar
+
+<FileContent>
+@page "/CalculateVar"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components
+@using Microsoft.Extensions.Logging
+@inject ILogger<CalculateVar> Logger
+@inject IJSRuntime JSRuntime
+
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>VaR Calculation - Risk Calculator</title>
+    <link href="Content/Site.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h2>Value at Risk (VaR) Calculator</h2>
+        </header>
+        
+        <NavigationControl />
+        
+        <div class="content">
+            @VarCalculationControl((EventCallback.Factory.Create<VaRCalculationEventArgs>(this, VarCalcControl_VaRCalculated),
+                                  EventCallback.Factory.Create<EventArgs>(this, VarCalcControl_CalculationReset)))
+            
+            <div class="calculation-stats">
+                <h4>Calculation Statistics</h4>
+                <table class="stats-table">
+                    <tr>
+                        <td>Total Calculations This Session:</td>
+                        <td>@lblTotalCalculations</td>
+                    </tr>
+                    <tr>
+                        <td>Last Calculation Time:</td>
+                        <td>@lblLastCalculationTime</td>
+                    </tr>
+                    <tr>
+                        <td>Session Duration:</td>
+                        <td>@lblSessionDuration</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        <nav class="bottom-nav">
+            <a href="/Default" class="nav-link">
+                ← Back to Main
+            </a>
+        </nav>
+    </div>
+</body>
+</html>
+
+@code {
+    private string lblTotalCalculations = "0";
+    private string lblLastCalculationTime = "No calculations yet";
+    private string lblSessionDuration = "00:00:00";
+    
+    private DateTime sessionStartTime;
+    private int totalCalculations = 0;
+    private DateTime? lastCalculationTime;
+    private System.Threading.Timer? timer;
+
+    protected override void OnInitialized()
+    {
+        sessionStartTime = DateTime.Now;
+        totalCalculations = 0;
+        
+        UpdateStatistics();
+        
+        // Start timer to update session duration every second
+        timer = new System.Threading.Timer(async _ => 
+        {
+            await InvokeAsync(() => 
+            {
+                UpdateStatistics();
+                StateHasChanged();
+            });
+        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    private void VarCalcControl_VaRCalculated(VaRCalculationEventArgs e)
+    {
+        // Handle VaR calculation event from the control
+        var result = e.Result;
+        
+        // Update session statistics
+        totalCalculations++;
+        lastCalculationTime = DateTime.Now;
+        
+        // Update statistics display
+        UpdateStatistics();
+        StateHasChanged();
+        
+        Logger.LogInformation("VaR calculation completed. Total calculations: {TotalCalculations}", totalCalculations);
+    }
+
+    private void VarCalcControl_CalculationReset(EventArgs e)
+    {
+        // Handle calculation reset event
+        UpdateStatistics();
+        StateHasChanged();
+        
+        Logger.LogInformation("VaR calculation reset");
+    }
+
+    private void UpdateStatistics()
+    {
+        // Update total calculations
+        lblTotalCalculations = totalCalculations.ToString();
+        
+        // Update last calculation time
+        if (lastCalculationTime.HasValue)
+        {
+            lblLastCalculationTime = lastCalculationTime.Value.ToString("yyyy-MM-dd HH:mm:ss");
+        }
+        else
+        {
+            lblLastCalculationTime = "No calculations yet";
+        }
+        
+        // Update session duration
+        TimeSpan duration = DateTime.Now - sessionStartTime;
+        lblSessionDuration = $"{duration.Hours:D2}:{duration.Minutes:D2}:{duration.Seconds:D2}";
+    }
+
+    public void Dispose()
+    {
+        timer?.Dispose();
+    }
+
+    // Custom event args class from original code
+    public class VaRCalculationEventArgs : EventArgs
+    {
+        public object Result { get; set; }
+        
+        public VaRCalculationEventArgs(object result)
+        {
+            Result = result;
+        }
+    }
+}
+
+@* Placeholder components for the custom controls *@
+<div style="display: none;">
+    @* These are placeholder implementations since the actual controls weren't provided *@
+</div>
+
+@code {
+    // Placeholder NavigationControl component
+    private RenderFragment NavigationControl => builder =>
+    {
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", "navigation-control");
+        builder.AddContent(2, "<!-- Navigation Control Placeholder -->");
+        builder.CloseElement();
+    };
+
+    // Placeholder VarCalculationControl component
+    private RenderFragment<(EventCallback<VaRCalculationEventArgs> OnVaRCalculated, EventCallback<EventArgs> OnCalculationReset)> VarCalculationControl => 
+        (parameters) => builder =>
+    {
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", "var-calculation-control");
+        builder.AddContent(2, "<!-- VaR Calculation Control Placeholder -->");
+        
+        // Add a test button to simulate calculation
+        builder.OpenElement(3, "button");
+        builder.AddAttribute(4, "onclick", EventCallback.Factory.Create(this, () => 
+        {
+            var args = new VaRCalculationEventArgs("Test Result");
+            parameters.OnVaRCalculated.InvokeAsync(args);
+        }));
+        builder.AddContent(5, "Test Calculate VaR");
+        builder.CloseElement();
+        
+        builder.OpenElement(6, "button");
+        builder.AddAttribute(7, "onclick", EventCallback.Factory.Create(this, () => 
+        {
+            parameters.OnCalculationReset.InvokeAsync(EventArgs.Empty);
+        }));
+        builder.AddContent(8, "Reset");
+        builder.CloseElement();
+        
+        builder.CloseElement();
+    };
+}
+</FileContent>

@@ -1,0 +1,346 @@
+@namespace risk.calculator.webapp.Components.Controls.MonteCarloControl
+
+@rendermode InteractiveServer
+@using System.Data
+@using System.Diagnostics
+@using Microsoft.Extensions.Logging
+
+<div class="monte-carlo-control">
+    <div class="simulation-controls">
+        <h4>Monte Carlo Risk Simulation</h4>
+        
+        <div class="form-group">
+            <label for="txtSimulations">Number of Simulations:</label>
+            <input @bind="txtSimulations" class="form-control" />
+            <input @bind="txtTestChan" />
+            @if (string.IsNullOrEmpty(txtSimulations))
+            {
+                <div class="error-message">Number of simulations is required</div>
+            }
+            @if (!string.IsNullOrEmpty(txtSimulations) && !System.Text.RegularExpressions.Regex.IsMatch(txtSimulations, @"^\d+$"))
+            {
+                <div class="error-message">Please enter a valid number</div>
+            }
+            @if (!string.IsNullOrEmpty(txtSimulations) && int.TryParse(txtSimulations, out int simValue) && (simValue < 100 || simValue > 10000))
+            {
+                <div class="error-message">Simulations must be between 100 and 10,000</div>
+            }
+        </div>
+        
+        <div class="form-group">
+            <button @onclick="@(() => btnRunSimulation_Click())" class="btn btn-primary">Run Simulation</button>
+            <button @onclick="@(() => btnClearHistory_Click())" class="btn btn-secondary">Clear History</button>
+        </div>
+    </div>
+    
+    @if (pnlResultsVisible)
+    {
+        <div class="results-panel">
+            <div class="simulation-info">
+                <p>Running @lblSimulationCount simulations for portfolio risk scenarios...</p>
+            </div>
+            
+            <table class="results-table">
+                <tr>
+                    <td>Simulations Run</td>
+                    <td>@lblSimulationsRun</td>
+                </tr>
+                <tr>
+                    <td>95% VaR (Daily)</td>
+                    <td>@lblVaR95</td>
+                </tr>
+                <tr>
+                    <td>99% VaR (Daily)</td>
+                    <td>@lblVaR99</td>
+                </tr>
+                <tr>
+                    <td>Expected Return</td>
+                    <td>@lblExpectedReturn</td>
+                </tr>
+                <tr>
+                    <td>Simulation Time</td>
+                    <td>@lblSimulationTime</td>
+                </tr>
+            </table>
+            
+            <div class="chart-placeholder">
+                <p><i>Chart visualization would be displayed here in a production application</i></p>
+            </div>
+        </div>
+    }
+    
+    <div class="simulation-history">
+        <h5>Recent Simulations</h5>
+        @if (historyDataTable != null && historyDataTable.Rows.Count > 0)
+        {
+            <table class="history-grid">
+                <thead class="grid-header">
+                    <tr>
+                        <th>Time</th>
+                        <th>Simulations</th>
+                        <th>95% VaR</th>
+                        <th>99% VaR</th>
+                        <th>Expected Return</th>
+                        <th>Time (ms)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int i = 0; i < historyDataTable.Rows.Count; i++)
+                    {
+                        var row = historyDataTable.Rows[i];
+                        <tr class="@(i % 2 == 0 ? "grid-row" : "grid-alt-row")">
+                            <td>@row["Timestamp"]</td>
+                            <td>@row["SimulationCount"]</td>
+                            <td>@string.Format("{0:F4}%", row["VaR95"])</td>
+                            <td>@string.Format("{0:F4}%", row["VaR99"])</td>
+                            <td>@string.Format("{0:F4}%", row["ExpectedReturn"])</td>
+                            <td>@row["ExecutionTime"]</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+    
+    <div class="error-panel">
+        @if (lblErrorVisible)
+        {
+            <div class="error-message">@lblErrorText</div>
+        }
+    </div>
+    
+    <input type="hidden" value="@hfSimulationHistory" />
+    <input type="hidden" value="@hfLastSimulationCount" />
+</div>
+
+@code {
+    [Parameter] public EventCallback<MonteCarloEventArgs> OnSimulationCompleted { get; set; }
+    [Inject] private ILogger<MonteCarloControl> Logger { get; set; } = default!;
+
+    private string txtSimulations = "1000";
+    private string txtTestChan = "";
+    private bool pnlResultsVisible = false;
+    private string lblSimulationCount = "";
+    private string lblSimulationsRun = "";
+    private string lblVaR95 = "";
+    private string lblVaR99 = "";
+    private string lblExpectedReturn = "";
+    private string lblSimulationTime = "";
+    private bool lblErrorVisible = false;
+    private string lblErrorText = "";
+    private string hfSimulationHistory = "";
+    private string hfLastSimulationCount = "";
+    
+    private List<MonteCarloSimulationResult> simulationHistory = new List<MonteCarloSimulationResult>();
+    private DataTable? historyDataTable;
+    
+    protected override void OnInitialized()
+    {
+        simulationHistory = new List<MonteCarloSimulationResult>();
+        LoadSimulationHistory();
+    }
+
+    private void btnRunSimulation_Click()
+    {
+        if (IsValid())
+        {
+            try
+            {
+                int simulations = int.Parse(txtSimulations);
+
+                // Run simulation with timing
+                var stopwatch = Stopwatch.StartNew();
+                var monteCarloService = new MonteCarloService();
+                var results = monteCarloService.RunSimulation(simulations);
+                stopwatch.Stop();
+
+                // Create simulation result object
+                var simulationResult = new MonteCarloSimulationResult
+                {
+                    SimulationCount = simulations,
+                    VaR95 = results.VaR95,
+                    VaR99 = results.VaR99,
+                    ExpectedReturn = results.ExpectedReturn,
+                    ExecutionTimeMs = stopwatch.ElapsedMilliseconds,
+                    Timestamp = DateTime.Now
+                };
+
+                // Store in history
+                if (simulationHistory == null)
+                {
+                    simulationHistory = new List<MonteCarloSimulationResult>();
+                }
+                simulationHistory.Insert(0, simulationResult); // Add to beginning
+
+                // Keep only last 10 simulations in history
+                if (simulationHistory.Count > 10)
+                {
+                    simulationHistory = simulationHistory.Take(10).ToList();
+                }
+
+                // Display results
+                DisplayResults(simulationResult);
+
+                // Store in hidden field
+                hfSimulationHistory = SerializeHistory(simulationHistory);
+
+                // Raise event for parent page
+                OnSimulationCompleted.InvokeAsync(new MonteCarloEventArgs(simulationResult));
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "An error occurred during simulation");
+                ShowError($"An error occurred during simulation: {ex.Message}");
+            }
+        }
+    }
+
+    private void btnClearHistory_Click()
+    {
+        simulationHistory = new List<MonteCarloSimulationResult>();
+        LoadSimulationHistory();
+    }
+
+    private bool IsValid()
+    {
+        if (string.IsNullOrEmpty(txtSimulations))
+            return false;
+        
+        if (!System.Text.RegularExpressions.Regex.IsMatch(txtSimulations, @"^\d+$"))
+            return false;
+        
+        if (int.TryParse(txtSimulations, out int simValue) && (simValue < 100 || simValue > 10000))
+            return false;
+        
+        return true;
+    }
+
+    private void DisplayResults(MonteCarloSimulationResult result)
+    {
+        lblSimulationCount = result.SimulationCount.ToString();
+        lblSimulationsRun = result.SimulationCount.ToString();
+        lblVaR95 = string.Format("{0:F4}%", result.VaR95 * 100);
+        lblVaR99 = string.Format("{0:F4}%", result.VaR99 * 100);
+        lblExpectedReturn = string.Format("{0:F4}%", result.ExpectedReturn * 100);
+        lblSimulationTime = $"{result.ExecutionTimeMs} ms";
+
+        pnlResultsVisible = true;
+        lblErrorVisible = false;
+
+        // Refresh history display
+        LoadSimulationHistory();
+    }
+
+    private void LoadSimulationHistory()
+    {
+        if (simulationHistory != null && simulationHistory.Count > 0)
+        {
+            var dt = new DataTable();
+            dt.Columns.Add("Timestamp", typeof(string));
+            dt.Columns.Add("SimulationCount", typeof(int));
+            dt.Columns.Add("VaR95", typeof(decimal));
+            dt.Columns.Add("VaR99", typeof(decimal));
+            dt.Columns.Add("ExpectedReturn", typeof(decimal));
+            dt.Columns.Add("ExecutionTime", typeof(long));
+
+            foreach (var result in simulationHistory)
+            {
+                dt.Rows.Add(
+                    result.Timestamp.ToString("HH:mm:ss"),
+                    result.SimulationCount,
+                    result.VaR95,
+                    result.VaR99,
+                    result.ExpectedReturn,
+                    result.ExecutionTimeMs
+                );
+            }
+
+            historyDataTable = dt;
+        }
+        else
+        {
+            historyDataTable = null;
+        }
+    }
+
+    private string SerializeHistory(List<MonteCarloSimulationResult> history)
+    {
+        // Simple serialization for hidden field storage
+        var items = new List<string>();
+        foreach (var result in history)
+        {
+            items.Add($"{result.Timestamp:yyyy-MM-dd HH:mm:ss}|{result.SimulationCount}|{result.VaR95}|{result.VaR99}|{result.ExpectedReturn}|{result.ExecutionTimeMs}");
+        }
+        return string.Join("||", items);
+    }
+
+    private void ShowError(string message)
+    {
+        lblErrorText = message;
+        lblErrorVisible = true;
+        pnlResultsVisible = false;
+    }
+
+    // Public properties for parent pages to access
+    public int LastSimulationCount
+    {
+        get
+        {
+            if (!string.IsNullOrEmpty(hfLastSimulationCount) && int.TryParse(hfLastSimulationCount, out int count))
+                return count;
+            return 0;
+        }
+    }
+
+    public List<MonteCarloSimulationResult> SimulationHistory
+    {
+        get { return simulationHistory ?? new List<MonteCarloSimulationResult>(); }
+    }
+
+    public bool HasResults
+    {
+        get { return pnlResultsVisible; }
+    }
+
+    // Event arguments class
+    public class MonteCarloEventArgs : EventArgs
+    {
+        public MonteCarloSimulationResult Result { get; }
+
+        public MonteCarloEventArgs(MonteCarloSimulationResult result)
+        {
+            Result = result;
+        }
+    }
+
+    // Result class for simulations
+    [Serializable]
+    public class MonteCarloSimulationResult
+    {
+        public int SimulationCount { get; set; }
+        public decimal VaR95 { get; set; }
+        public decimal VaR99 { get; set; }
+        public decimal ExpectedReturn { get; set; }
+        public long ExecutionTimeMs { get; set; }
+        public DateTime Timestamp { get; set; }
+    }
+
+    // Monte Carlo Service (placeholder - you'll need to implement this)
+    public class MonteCarloService
+    {
+        public MonteCarloSimulationResult RunSimulation(int simulationCount)
+        {
+            // Placeholder implementation - replace with actual Monte Carlo simulation logic
+            var random = new Random();
+            return new MonteCarloSimulationResult
+            {
+                SimulationCount = simulationCount,
+                VaR95 = (decimal)(random.NextDouble() * 0.05), // 0-5%
+                VaR99 = (decimal)(random.NextDouble() * 0.10), // 0-10%
+                ExpectedReturn = (decimal)(random.NextDouble() * 0.15 - 0.05), // -5% to 10%
+                ExecutionTimeMs = random.Next(100, 1000),
+                Timestamp = DateTime.Now
+            };
+        }
+    }
+}

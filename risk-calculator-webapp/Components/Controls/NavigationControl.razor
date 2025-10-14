@@ -1,0 +1,47 @@
+@namespace risk.calculator.webapp.Components.Controls.NavigationControl
+
+<FileContent>
+@using Microsoft.Extensions.Logging
+
+<div class="navigation">
+    <table class="nav-table">
+        <tr>
+            <td>
+                <a href="/CalculateVar" class="nav-link">
+                    Calculate VaR
+                </a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <a href="/Portfolio" class="nav-link">
+                    View Portfolio
+                </a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <a href="/MonteCarlo" class="nav-link">
+                    Monte Carlo Simulation
+                </a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <a href="/RiskAlerts" class="nav-link">
+                    Risk Alerts
+                </a>
+            </td>
+        </tr>
+    </table>
+</div>
+
+@code {
+    [Inject] private ILogger<NavigationControl> Logger { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        // Component initialization logic if needed
+    }
+}
+</FileContent>

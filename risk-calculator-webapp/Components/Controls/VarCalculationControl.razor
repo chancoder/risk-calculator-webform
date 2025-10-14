@@ -1,0 +1,312 @@
+@namespace risk.calculator.webapp.Components.Controls.VarCalculationControl
+
+<FileContent>
+@rendermode InteractiveServer
+@using Microsoft.Extensions.Logging
+@using System.ComponentModel.DataAnnotations
+@inject ILogger<VarCalculationControl> Logger
+
+<div class="var-calculation-control">
+    @if (showForm)
+    {
+        <div class="form-panel">
+            <EditForm Model="@model" OnValidSubmit="@HandleValidSubmit" FormName="VarCalculationForm">
+                <DataAnnotationsValidator />
+                
+                <div class="form-group">
+                    <label for="txtSymbol">Stock Symbol:</label>
+                    <InputText @bind-Value="model.Symbol" class="form-control" id="txtSymbol" />
+                    <ValidationMessage For="@(() => model.Symbol)" class="error-message" />
+                </div>
+                
+                <div class="form-group">
+                    <label for="txtAmount">Amount ($):</label>
+                    <InputNumber @bind-Value="model.Amount" class="form-control" id="txtAmount" />
+                    <ValidationMessage For="@(() => model.Amount)" class="error-message" />
+                </div>
+                
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">Calculate Risk</button>
+                    <button type="button" class="btn btn-secondary" @onclick="@(() => ResetForm())">Reset</button>
+                </div>
+            </EditForm>
+        </div>
+    }
+    
+    @if (showResults)
+    {
+        <div class="results-panel">
+            <h3>Risk Analysis for @currentResult.Symbol</h3>
+            
+            <table class="results-table">
+                <tr>
+                    <td>Investment Amount</td>
+                    <td>@string.Format("${0:N2}", currentResult.Amount)</td>
+                </tr>
+                <tr>
+                    <td>Daily VaR (95%)</td>
+                    <td>@string.Format("${0:N2}", currentResult.VaR)</td>
+                </tr>
+                <tr>
+                    <td>Credit Risk Score</td>
+                    <td>@string.Format("{0:F1}/10", currentResult.CreditRisk)</td>
+                </tr>
+                <tr>
+                    <td>Risk Level</td>
+                    <td class="risk-level @currentResult.RiskLevel.ToLower()">@currentResult.RiskLevel</td>
+                </tr>
+            </table>
+            
+            <div class="form-group">
+                <button type="button" class="btn btn-secondary" @onclick="@(() => NewCalculation())">New Calculation</button>
+            </div>
+        </div>
+    }
+    
+    <div class="error-panel">
+        @if (showError)
+        {
+            <div class="error-message">@errorMessage</div>
+        }
+    </div>
+    
+    <input type="hidden" value="@lastCalculation" />
+    <input type="hidden" value="@calculationCount" />
+</div>
+
+@code {
+    // Parameters for parent components to handle events
+    [Parameter] public EventCallback<VaRCalculationEventArgs> OnVaRCalculated { get; set; }
+    [Parameter] public EventCallback OnCalculationReset { get; set; }
+
+    // Model for form binding
+    private VarCalculationModel model = new VarCalculationModel();
+    
+    // State variables
+    private bool showForm = true;
+    private bool showResults = false;
+    private bool showError = false;
+    private string errorMessage = string.Empty;
+    private string lastCalculation = string.Empty;
+    private int calculationCount = 0;
+    
+    // Current result
+    private VaRCalculationResult currentResult = new VaRCalculationResult();
+    
+    // ViewState equivalents
+    private string lastSymbol = string.Empty;
+    private decimal lastAmount = 0m;
+    private List<VaRCalculationResult> calculationHistory = new List<VaRCalculationResult>();
+
+    // Public properties for parent components to access
+    public string Symbol
+    {
+        get { return model.Symbol ?? string.Empty; }
+        set { model.Symbol = value; }
+    }
+
+    public decimal Amount
+    {
+        get { return model.Amount; }
+        set { model.Amount = value; }
+    }
+
+    public int CalculationCount
+    {
+        get { return calculationCount; }
+    }
+
+    public List<VaRCalculationResult> CalculationHistory
+    {
+        get { return calculationHistory ?? new List<VaRCalculationResult>(); }
+    }
+
+    protected override void OnInitialized()
+    {
+        // Initialize default values - equivalent to Page_Load !IsPostBack
+        lastSymbol = string.Empty;
+        lastAmount = 0m;
+        calculationHistory = new List<VaRCalculationResult>();
+        
+        // Set default values (equivalent to Session state)
+        model.Symbol = "AAPL";
+        model.Amount = 100000;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            string symbol = model.Symbol.Trim().ToUpper();
+            decimal amount = model.Amount;
+
+            // Store last calculated values
+            lastSymbol = symbol;
+            lastAmount = amount;
+
+            // Calculate VaR using business logic
+            var riskCalculator = new RiskCalculator();
+            decimal var = riskCalculator.CalculateVaR(symbol, amount);
+            decimal creditRisk = riskCalculator.CalculateCreditRisk(symbol);
+            string riskLevel = riskCalculator.GetRiskLevel(var / amount);
+
+            // Create result object
+            var result = new VaRCalculationResult
+            {
+                Symbol = symbol,
+                Amount = amount,
+                VaR = var,
+                CreditRisk = creditRisk,
+                RiskLevel = riskLevel,
+                CalculatedAt = DateTime.Now
+            };
+
+            // Store in calculation history
+            calculationHistory.Add(result);
+
+            // Update calculation count
+            calculationCount++;
+
+            // Display results
+            DisplayResults(result);
+
+            // Store last calculation
+            lastCalculation = $"{symbol}|{amount}|{var}|{creditRisk}|{riskLevel}";
+
+            // Raise event for parent component
+            if (OnVaRCalculated.HasDelegate)
+            {
+                await OnVaRCalculated.InvokeAsync(new VaRCalculationEventArgs(result));
+            }
+
+            // Check for high risk and add alert
+            if (var / amount > 0.05m)
+            {
+                var alertService = new RiskAlertService();
+                alertService.AddAlert($"HIGH RISK: {symbol} VaR exceeds 5% threshold at {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            }
+
+            Logger.LogInformation("VaR calculation completed for {Symbol} with amount {Amount}", symbol, amount);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error occurred during VaR calculation");
+            ShowError($"An error occurred during calculation: {ex.Message}");
+        }
+    }
+
+    private async Task ResetForm()
+    {
+        showForm = true;
+        showResults = false;
+        showError = false;
+        
+        // Reset to default values
+        model.Symbol = "AAPL";
+        model.Amount = 100000;
+
+        if (OnCalculationReset.HasDelegate)
+        {
+            await OnCalculationReset.InvokeAsync();
+        }
+    }
+
+    private void NewCalculation()
+    {
+        showForm = true;
+        showResults = false;
+        showError = false;
+        
+        // Keep last calculated values
+        model.Symbol = lastSymbol;
+        model.Amount = lastAmount;
+    }
+
+    private void DisplayResults(VaRCalculationResult result)
+    {
+        currentResult = result;
+        showForm = false;
+        showResults = true;
+        showError = false;
+    }
+
+    private void ShowError(string message)
+    {
+        errorMessage = message;
+        showError = true;
+        showForm = true;
+        showResults = false;
+    }
+
+    // Model class for form validation
+    public class VarCalculationModel
+    {
+        [Required(ErrorMessage = "Stock symbol is required")]
+        public string Symbol { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Amount is required")]
+        [Range(0.01, 999999999.99, ErrorMessage = "Amount must be between $0.01 and $999,999,999.99")]
+        public decimal Amount { get; set; }
+    }
+
+    // Event arguments class
+    [Serializable]
+    public class VaRCalculationEventArgs : EventArgs
+    {
+        public VaRCalculationResult Result { get; }
+
+        public VaRCalculationEventArgs(VaRCalculationResult result)
+        {
+            Result = result;
+        }
+    }
+
+    // Result class for calculations
+    [Serializable]
+    public class VaRCalculationResult
+    {
+        public string Symbol { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+        public decimal VaR { get; set; }
+        public decimal CreditRisk { get; set; }
+        public string RiskLevel { get; set; } = string.Empty;
+        public DateTime CalculatedAt { get; set; }
+    }
+
+    // Placeholder classes - these should be implemented based on your business logic
+    public class RiskCalculator
+    {
+        public decimal CalculateVaR(string symbol, decimal amount)
+        {
+            // Implement your VaR calculation logic here
+            // This is a placeholder implementation
+            return amount * 0.02m; // 2% VaR as example
+        }
+
+        public decimal CalculateCreditRisk(string symbol)
+        {
+            // Implement your credit risk calculation logic here
+            // This is a placeholder implementation
+            return 5.5m; // Example credit risk score
+        }
+
+        public string GetRiskLevel(decimal riskRatio)
+        {
+            // Implement your risk level determination logic here
+            if (riskRatio > 0.05m) return "High";
+            if (riskRatio > 0.02m) return "Medium";
+            return "Low";
+        }
+    }
+
+    public class RiskAlertService
+    {
+        public void AddAlert(string message)
+        {
+            // Implement your alert service logic here
+            // This could log to database, send notifications, etc.
+            Console.WriteLine($"ALERT: {message}");
+        }
+    }
+}
+</FileContent>

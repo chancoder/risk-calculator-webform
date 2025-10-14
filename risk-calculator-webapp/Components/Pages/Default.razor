@@ -1,0 +1,105 @@
+@namespace risk.calculator.webapp.Components.Pages.Default
+
+<FileContent>
+@page "/"
+@page "/Default"
+@using Microsoft.AspNetCore.Components
+@using Microsoft.Extensions.Logging
+@inject ILogger<Default> Logger
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Risk Calculator - Financial Risk Management System</title>
+    <link href="Content/Site.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Financial Risk Management System v2.1</h1>
+            <h3>ASP.NET Blazor Application - Enhanced with Components!</h3>
+        </header>
+        
+        <NavigationControl />
+        
+        <div class="welcome-message">
+            <h4>Welcome to the Risk Calculator</h4>
+            <p>This application provides comprehensive financial risk analysis tools including VaR calculations, portfolio analysis, Monte Carlo simulations, and risk alert management.</p>
+            
+            <div class="feature-highlights">
+                <h5>Key Features:</h5>
+                <ul>
+                    <li><strong>Value at Risk (VaR) Calculations</strong> - Calculate risk metrics for individual securities</li>
+                    <li><strong>Portfolio Analysis</strong> - View comprehensive portfolio risk metrics</li>
+                    <li><strong>Monte Carlo Simulations</strong> - Run statistical risk simulations</li>
+                    <li><strong>Risk Alerts</strong> - Monitor and manage risk alerts</li>
+                    <li><strong>State Management</strong> - Component state and session storage for data persistence</li>
+                </ul>
+            </div>
+        </div>
+        
+        <footer>
+            <p><i>Current Time: @currentTime</i></p>
+            <p><i>Session ID: @sessionId</i></p>
+        </footer>
+    </div>
+</body>
+</html>
+
+@code {
+    private string currentTime = string.Empty;
+    private string sessionId = string.Empty;
+    private int pageVisits = 0;
+    private DateTime firstVisitTime;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            currentTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            sessionId = Guid.NewGuid().ToString("N")[..8]; // Simulate session ID
+            
+            // Initialize session-like state with default values
+            await InitializeSessionDefaults();
+            
+            // Initialize component state (equivalent to ViewState)
+            pageVisits = 1;
+            firstVisitTime = DateTime.Now;
+            
+            Logger.LogInformation("Default page initialized at {Time}", currentTime);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error initializing Default page");
+        }
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            // Update current time on subsequent renders
+            currentTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            pageVisits++;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task InitializeSessionDefaults()
+    {
+        try
+        {
+            // Store default values in browser's session storage
+            await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "DefaultSymbol", "AAPL");
+            await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "DefaultAmount", "100000");
+            await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "DefaultSimulationCount", "1000");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error initializing session defaults");
+        }
+    }
+}
+</FileContent>

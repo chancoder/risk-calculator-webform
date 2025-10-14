@@ -1,0 +1,55 @@
+@namespace risk.calculator.webapp.Components.ViewSwitcher
+
+<FileContent>
+@using Microsoft.AspNetCore.Components
+@using Microsoft.Extensions.Logging
+@using System
+@using System.Threading.Tasks
+@inject IJSRuntime JSRuntime
+@inject ILogger<ViewSwitcher> Logger
+@inject NavigationManager Navigation
+
+<div id="viewSwitcher">
+    @CurrentView view | <a href="@SwitchUrl" data-ajax="false">Switch to @AlternateView</a>
+</div>
+
+@code {
+    protected string CurrentView { get; private set; } = "Desktop";
+    protected string AlternateView { get; private set; } = "Mobile";
+    protected string SwitchUrl { get; private set; } = "#";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Determine current view using JavaScript interop
+            var isMobile = await JSRuntime.InvokeAsync<bool>("isMobileDevice");
+            CurrentView = isMobile ? "Mobile" : "Desktop";
+            AlternateView = isMobile ? "Desktop" : "Mobile";
+
+            // Create switch URL - using query parameter approach for Blazor
+            var currentUri = Navigation.Uri;
+            var baseUri = Navigation.BaseUri;
+            var relativePath = currentUri.Substring(baseUri.Length);
+            
+            // Add or update view parameter
+            var separator = relativePath.Contains('?') ? "&" : "?";
+            SwitchUrl = $"{relativePath}{separator}view={AlternateView.ToLower()}";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error initializing ViewSwitcher");
+            // Set defaults on error
+            CurrentView = "Desktop";
+            AlternateView = "Mobile";
+            SwitchUrl = "#";
+        }
+    }
+}
+
+<script>
+    window.isMobileDevice = function() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    };
+</script>
+</FileContent>

@@ -1,0 +1,158 @@
+@namespace risk.calculator.webapp.Components.Pages.MonteCarlo
+
+<FileContent>
+@page "/MonteCarlo"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components
+@using Microsoft.Extensions.Logging
+@using System.Collections.Generic
+@using System.Linq
+
+@inject ILogger<MonteCarlo> Logger
+@inject IJSRuntime JSRuntime
+
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Monte Carlo Simulation - Risk Calculator</title>
+    <link href="Content/Site.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h2>Monte Carlo Risk Simulation Dashboard</h2>
+        </header>
+
+        <NavigationControl />
+
+        <div class="content">
+            <MonteCarloControl OnSimulationCompleted="MonteCarloControl_SimulationCompleted" />
+
+            <div class="simulation-statistics">
+                <h4>Simulation Statistics</h4>
+                <table class="stats-table">
+                    <tr>
+                        <td>Total Simulations This Session:</td>
+                        <td>@totalSimulations</td>
+                    </tr>
+                    <tr>
+                        <td>Last Simulation Time:</td>
+                        <td>@lastSimulationTimeText</td>
+                    </tr>
+                    <tr>
+                        <td>Average Simulation Time:</td>
+                        <td>@averageSimulationTimeText</td>
+                    </tr>
+                    <tr>
+                        <td>Fastest Simulation:</td>
+                        <td>@fastestSimulationText</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <nav class="bottom-nav">
+            <a href="/Default" class="nav-link">
+                ← Back to Main
+            </a>
+        </nav>
+    </div>
+</body>
+</html>
+
+@code {
+    private int totalSimulations = 0;
+    private DateTime? lastSimulationTime;
+    private string lastSimulationTimeText = "No simulations yet";
+    private string averageSimulationTimeText = "N/A";
+    private string fastestSimulationText = "N/A";
+
+    private List<MonteCarloSimulationResult> simulationHistory = new List<MonteCarloSimulationResult>();
+    private List<long> simulationTimes = new List<long>();
+    private MonteCarloSimulationResult? lastSimulationResult;
+
+    protected override void OnInitialized()
+    {
+        Logger.LogInformation("MonteCarlo component initialized");
+        UpdateStatistics();
+    }
+
+    private void MonteCarloControl_SimulationCompleted(MonteCarloEventArgs e)
+    {
+        Logger.LogInformation("Monte Carlo simulation completed");
+
+        // Handle simulation completed event from the control
+        var result = e.Result;
+
+        // Update statistics
+        totalSimulations++;
+        lastSimulationTime = DateTime.Now;
+        lastSimulationResult = result;
+
+        // Update simulation history
+        simulationHistory.Insert(0, result);
+
+        // Keep only last 20 simulations in history
+        if (simulationHistory.Count > 20)
+        {
+            simulationHistory = simulationHistory.Take(20).ToList();
+        }
+
+        // Update simulation times
+        simulationTimes.Add(result.ExecutionTimeMs);
+
+        // Update statistics display
+        UpdateStatistics();
+
+        // Trigger UI update
+        StateHasChanged();
+    }
+
+    private void UpdateStatistics()
+    {
+        // Update last simulation time
+        if (lastSimulationTime.HasValue)
+        {
+            lastSimulationTimeText = lastSimulationTime.Value.ToString("yyyy-MM-dd HH:mm:ss");
+        }
+        else
+        {
+            lastSimulationTimeText = "No simulations yet";
+        }
+
+        // Calculate and display simulation time statistics
+        if (simulationTimes != null && simulationTimes.Count > 0)
+        {
+            double averageTime = simulationTimes.Average();
+            long fastestTime = simulationTimes.Min();
+
+            averageSimulationTimeText = $"{averageTime:F0} ms";
+            fastestSimulationText = $"{fastestTime} ms";
+        }
+        else
+        {
+            averageSimulationTimeText = "N/A";
+            fastestSimulationText = "N/A";
+        }
+    }
+
+    // Custom classes from original code
+    public class MonteCarloSimulationResult
+    {
+        public long ExecutionTimeMs { get; set; }
+        public double Result { get; set; }
+        public DateTime Timestamp { get; set; }
+        public int Iterations { get; set; }
+    }
+
+    public class MonteCarloEventArgs : EventArgs
+    {
+        public MonteCarloSimulationResult Result { get; set; }
+
+        public MonteCarloEventArgs(MonteCarloSimulationResult result)
+        {
+            Result = result;
+        }
+    }
+}
+</FileContent>

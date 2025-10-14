@@ -1,0 +1,225 @@
+@namespace risk.calculator.webapp.Components.Controls.PortfolioGridControl
+
+<FileContent>
+@rendermode InteractiveServer
+@using System.Data
+@using Microsoft.Extensions.Logging
+@using System.Collections.Generic
+@using System.Linq
+
+<div class="portfolio-grid-control">
+    <div class="portfolio-header">
+        <h3>Current Portfolio Holdings</h3>
+        <button type="button" class="btn btn-primary" @onclick="@(() => RefreshData())">Refresh Data</button>
+    </div>
+    
+    @if (portfolioDataTable != null && portfolioDataTable.Rows.Count > 0)
+    {
+        <table class="portfolio-grid">
+            <thead>
+                <tr class="grid-header">
+                    <th>Symbol</th>
+                    <th>Value ($)</th>
+                    <th>Daily VaR</th>
+                    <th>Risk %</th>
+                    <th>Risk Level</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (int i = 0; i < portfolioDataTable.Rows.Count; i++)
+                {
+                    var row = portfolioDataTable.Rows[i];
+                    var cssClass = i % 2 == 0 ? "grid-row" : "grid-alt-row";
+                    var riskLevel = row["RiskLevel"].ToString();
+                    var riskLevelCss = $"risk-level {riskLevel.ToLower()}";
+                    
+                    <tr class="@cssClass">
+                        <td>@row["Symbol"]</td>
+                        <td>@(((decimal)row["Value"]).ToString("N2"))</td>
+                        <td>@(((decimal)row["DailyVaR"]).ToString("N2"))</td>
+                        <td>@(((decimal)row["RiskPercentage"]).ToString("F2"))%</td>
+                        <td><span class="@riskLevelCss">@riskLevel</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    
+    <div class="portfolio-summary">
+        <h4>Portfolio Summary</h4>
+        <table class="summary-table">
+            <tr>
+                <td>Total Portfolio Value:</td>
+                <td><span class="summary-value">@totalValueText</span></td>
+            </tr>
+            <tr>
+                <td>Total Daily VaR:</td>
+                <td><span class="summary-value">@totalVaRText</span></td>
+            </tr>
+            <tr>
+                <td>Portfolio Risk Ratio:</td>
+                <td><span class="summary-value">@riskRatioText</span></td>
+            </tr>
+            <tr>
+                <td>Last Updated:</td>
+                <td><span class="summary-value">@lastUpdatedText</span></td>
+            </tr>
+        </table>
+    </div>
+    
+    <input type="hidden" value="@portfolioDataHidden" />
+    <input type="hidden" value="@lastRefreshTimeHidden" />
+</div>
+
+@code {
+    [Inject] private ILogger<PortfolioGridControl> Logger { get; set; } = default!;
+    
+    // EventCallback for parent components to handle
+    [Parameter] public EventCallback<PortfolioDataEventArgs> OnPortfolioDataLoaded { get; set; }
+
+    private Dictionary<string, decimal> portfolioData = new Dictionary<string, decimal>();
+    private DateTime lastCalculationTime = DateTime.Now;
+    private DataTable? portfolioDataTable;
+    private string totalValueText = "";
+    private string totalVaRText = "";
+    private string riskRatioText = "";
+    private string lastUpdatedText = "";
+    private string portfolioDataHidden = "";
+    private string lastRefreshTimeHidden = "";
+
+    protected override void OnInitialized()
+    {
+        portfolioData = new Dictionary<string, decimal>();
+        lastCalculationTime = DateTime.Now;
+        LoadPortfolioData();
+    }
+
+    private void RefreshData()
+    {
+        LoadPortfolioData();
+        StateHasChanged();
+    }
+
+    private void LoadPortfolioData()
+    {
+        try
+        {
+            var riskCalculator = new RiskCalculator();
+            portfolioData = riskCalculator.GetPortfolioData();
+
+            // Store calculation time
+            lastCalculationTime = DateTime.Now;
+
+            var dt = new DataTable();
+            dt.Columns.Add("Symbol", typeof(string));
+            dt.Columns.Add("Value", typeof(decimal));
+            dt.Columns.Add("DailyVaR", typeof(decimal));
+            dt.Columns.Add("RiskPercentage", typeof(decimal));
+            dt.Columns.Add("RiskLevel", typeof(string));
+
+            decimal totalValue = 0;
+            decimal totalVaR = 0;
+
+            foreach (var item in portfolioData)
+            {
+                decimal var = riskCalculator.CalculateVaR(item.Key, item.Value);
+                decimal riskPct = (var / item.Value) * 100;
+                string riskLevel = riskCalculator.GetRiskLevel(var / item.Value);
+
+                dt.Rows.Add(item.Key, item.Value, var, riskPct, riskLevel);
+
+                totalValue += item.Value;
+                totalVaR += var;
+            }
+
+            portfolioDataTable = dt;
+
+            // Display summary
+            decimal totalRiskPct = totalValue > 0 ? (totalVaR / totalValue) * 100 : 0;
+            totalValueText = string.Format("${0:N2}", totalValue);
+            totalVaRText = string.Format("${0:N2}", totalVaR);
+            riskRatioText = string.Format("{0:F2}%", totalRiskPct);
+            lastUpdatedText = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+            // Store in hidden fields
+            lastRefreshTimeHidden = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            portfolioDataHidden = SerializePortfolioData(portfolioData);
+
+            // Create event args and raise event
+            var eventArgs = new PortfolioDataEventArgs
+            {
+                TotalValue = totalValue,
+                TotalVaR = totalVaR,
+                RiskRatio = totalRiskPct,
+                Holdings = portfolioData,
+                LastUpdated = DateTime.Now
+            };
+
+            OnPortfolioDataLoaded.InvokeAsync(eventArgs);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading portfolio data: {Message}", ex.Message);
+        }
+    }
+
+    private string SerializePortfolioData(Dictionary<string, decimal> portfolioData)
+    {
+        // Simple serialization for hidden field storage
+        var items = new List<string>();
+        foreach (var item in portfolioData)
+        {
+            items.Add($"{item.Key}:{item.Value}");
+        }
+        return string.Join("|", items);
+    }
+
+    // Public properties for parent components to access
+    public Dictionary<string, decimal> PortfolioData
+    {
+        get { return portfolioData ?? new Dictionary<string, decimal>(); }
+    }
+
+    public DateTime LastCalculationTime
+    {
+        get { return lastCalculationTime; }
+    }
+
+    public decimal TotalValue
+    {
+        get
+        {
+            var data = PortfolioData;
+            return data.Values.Sum();
+        }
+    }
+
+    public decimal TotalVaR
+    {
+        get
+        {
+            var riskCalculator = new RiskCalculator();
+            var data = PortfolioData;
+            decimal totalVaR = 0;
+
+            foreach (var item in data)
+            {
+                totalVaR += riskCalculator.CalculateVaR(item.Key, item.Value);
+            }
+
+            return totalVaR;
+        }
+    }
+
+    // Event arguments class
+    [Serializable]
+    public class PortfolioDataEventArgs : EventArgs
+    {
+        public decimal TotalValue { get; set; }
+        public decimal TotalVaR { get; set; }
+        public decimal RiskRatio { get; set; }
+        public Dictionary<string, decimal> Holdings { get; set; } = new Dictionary<string, decimal>();
+        public DateTime LastUpdated { get; set; }
+    }
+}
+</FileContent>
