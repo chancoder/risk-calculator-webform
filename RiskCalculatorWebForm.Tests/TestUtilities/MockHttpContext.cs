@@ -1,64 +1,88 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.Web;
-using System.Web.SessionState;
-using Moq;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
+
 
 namespace RiskCalculatorWebForm.Tests.TestUtilities
 {
+    /// <summary>
+    /// A simple in-memory ISession implementation for unit testing
+    /// </summary>
+    public class MockSession : ISession
+    {
+        private readonly Dictionary<string, byte[]> _store = new Dictionary<string, byte[]>();
+
+        public bool IsAvailable => true;
+        public string Id => "MockSessionId";
+        public IEnumerable<string> Keys => _store.Keys;
+
+        public void Clear() => _store.Clear();
+
+        public Task CommitAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task LoadAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public void Remove(string key) => _store.Remove(key);
+
+        public void Set(string key, byte[] value) => _store[key] = value;
+
+        public bool TryGetValue(string key, out byte[] value) => _store.TryGetValue(key, out value);
+    }
     /// <summary>
     /// Utility class for creating mock HttpContext objects for unit testing
     /// </summary>
     public static class MockHttpContext
     {
-        public static HttpContextBase CreateMockHttpContext()
+        public static HttpContext CreateMockHttpContext()
         {
-            var mockContext = new Mock<HttpContextBase>();
-            var mockRequest = new Mock<HttpRequestBase>();
-            var mockResponse = new Mock<HttpResponseBase>();
-            var mockSession = new Mock<HttpSessionStateBase>();
-            var mockServer = new Mock<HttpServerUtilityBase>();
+            var context = new DefaultHttpContext();
 
             // Setup request
-            mockRequest.Setup(r => r.QueryString).Returns(new NameValueCollection());
-            mockRequest.Setup(r => r.Form).Returns(new NameValueCollection());
-            mockRequest.Setup(r => r.Cookies).Returns(new HttpCookieCollection());
-            mockRequest.Setup(r => r.Url).Returns(new Uri("http://localhost:12345/Test.aspx"));
-
-            // Setup response
-            mockResponse.Setup(r => r.Cookies).Returns(new HttpCookieCollection());
+            context.Request.Method = "GET";
+            context.Request.Scheme = "http";
+            context.Request.Host = new HostString("localhost", 12345);
+            context.Request.Path = "/Test.aspx";
+            context.Request.QueryString = QueryString.Empty;
 
             // Setup session
-            mockSession.Setup(s => s.SessionID).Returns("TestSessionId12345");
-            
-            // Setup context
-            mockContext.Setup(c => c.Request).Returns(mockRequest.Object);
-            mockContext.Setup(c => c.Response).Returns(mockResponse.Object);
-            mockContext.Setup(c => c.Session).Returns(mockSession.Object);
-            mockContext.Setup(c => c.Server).Returns(mockServer.Object);
+            var session = new MockSession();
+            session.SetString("SessionID", "TestSessionId12345");
+            context.Features.Set<ISessionFeature>(new SessionFeature { Session = session });
 
-            return mockContext.Object;
+            return context;
         }
 
-        public static HttpContextBase CreateMockHttpContextWithSession(Dictionary<string, object> sessionData = null)
-        {            
-            var mockContext = new Mock<HttpContextBase>();
-            var mockSession = new Mock<HttpSessionStateBase>();
-            
+        public static HttpContext CreateMockHttpContextWithSession(Dictionary<string, object> sessionData = null)
+        {
+            var context = new DefaultHttpContext();
+
+            var session = new MockSession();
+            session.SetString("SessionID", "TestSessionId12345");
+
             // Setup session with data
             if (sessionData != null)
             {
                 foreach (var item in sessionData)
                 {
-                    mockSession.Setup(s => s[item.Key]).Returns(item.Value);
+                    if (item.Value is string strVal)
+                        session.SetString(item.Key, strVal);
+                    else
+                        session.SetString(item.Key, System.Text.Json.JsonSerializer.Serialize(item.Value));
                 }
             }
 
-            mockSession.Setup(s => s.SessionID).Returns("TestSessionId12345");
-            mockContext.Setup(c => c.Session).Returns(mockSession.Object);
+            context.Features.Set<ISessionFeature>(new SessionFeature { Session = session });
 
-            return mockContext.Object;
+            return context;
+        }
+
+        // Minimal ISessionFeature implementation
+        private class SessionFeature : ISessionFeature
+        {
+            public ISession Session { get; set; }
         }
     }
 }

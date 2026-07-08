@@ -1,0 +1,157 @@
+@namespace risk.calculator.webapp.Components.Pages.RiskAlerts
+
+@page "/RiskAlerts"
+@rendermode InteractiveServer
+@using Microsoft.Extensions.Logging
+@inject ILogger<RiskAlerts> Logger
+@inject RiskAlertService AlertService
+
+<PageTitle>Risk Alerts - Risk Calculator</PageTitle>
+
+<link href="Content/Site.css" rel="stylesheet" type="text/css" />
+
+<div class="container">
+    <header>
+        <h2>Risk Alert System</h2>
+    </header>
+
+    <div class="content">
+        <div class="alerts-controls">
+            <button class="btn btn-danger" @onclick="ConfirmClearAlerts">Clear All Alerts</button>
+        </div>
+
+        @if (showNoAlerts)
+        {
+            <div class="no-alerts-panel">
+                <div class="alert alert-info">
+                    <strong>No Risk Alerts</strong>
+                    <p>No risk alerts at this time. The system will automatically generate alerts when risk thresholds are exceeded.</p>
+                </div>
+            </div>
+        }
+
+        @if (showAlertsList)
+        {
+            <div class="alerts-list-panel">
+                <h3>Active Risk Alerts</h3>
+                @foreach (var alertItem in alertObjects)
+                {
+                    <div class="alert alert-warning alert-item">
+                        <span class="alert-time">@alertItem.Time</span>
+                        <span class="alert-message">@alertItem.Message</span>
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="alert-stats">
+            <p><strong>Total Alerts:</strong> @alertCount</p>
+            <p><strong>Last Updated:</strong> @lastUpdated</p>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <NavLink href="/Default" class="nav-link">
+            ← Back to Main
+        </NavLink>
+    </nav>
+</div>
+
+@if (showConfirmDialog)
+{
+    <div class="modal-backdrop" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;">
+        <div class="modal-dialog" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:5px;z-index:1001;">
+            <p>Are you sure you want to clear all alerts?</p>
+            <button class="btn btn-danger" @onclick="ClearAlertsConfirmed">Yes</button>
+            <button class="btn btn-secondary" @onclick="CancelClear">No</button>
+        </div>
+    </div>
+}
+
+@code {
+    private bool showNoAlerts = false;
+    private bool showAlertsList = false;
+    private bool showConfirmDialog = false;
+    private int alertCount = 0;
+    private string lastUpdated = string.Empty;
+    private List<AlertDisplayItem> alertObjects = new List<AlertDisplayItem>();
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            LoadAlerts();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading alerts on initialization.");
+        }
+    }
+
+    private void LoadAlerts()
+    {
+        try
+        {
+            var alerts = AlertService.GetAlerts();
+
+            alertObjects = new List<AlertDisplayItem>();
+
+            if (alerts.Count == 0)
+            {
+                showNoAlerts = true;
+                showAlertsList = false;
+            }
+            else
+            {
+                showNoAlerts = false;
+                showAlertsList = true;
+
+                foreach (var alert in alerts)
+                {
+                    alertObjects.Add(new AlertDisplayItem
+                    {
+                        Message = alert,
+                        Time = DateTime.Now.ToString("HH:mm:ss")
+                    });
+                }
+            }
+
+            alertCount = alerts.Count;
+            lastUpdated = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading alerts.");
+        }
+    }
+
+    private void ConfirmClearAlerts()
+    {
+        showConfirmDialog = true;
+    }
+
+    private void ClearAlertsConfirmed()
+    {
+        try
+        {
+            showConfirmDialog = false;
+            AlertService.ClearAlerts();
+            LoadAlerts();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error clearing alerts.");
+        }
+    }
+
+    private void CancelClear()
+    {
+        showConfirmDialog = false;
+    }
+
+    private class AlertDisplayItem
+    {
+        public string Message { get; set; } = string.Empty;
+        public string Time { get; set; } = string.Empty;
+    }
+}

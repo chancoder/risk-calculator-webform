@@ -1,0 +1,129 @@
+@namespace risk.calculator.webapp.Components.Pages.Portfolio
+
+@page "/Portfolio"
+@rendermode InteractiveServer
+@using System.Collections.Generic
+@using System.Linq
+@using risk.calculator.webapp.Components.Controls
+@using risk.calculator.webapp
+
+
+
+
+@inject ILogger<Portfolio> Logger
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+
+<div class="container">
+    <header>
+        <h2>Portfolio Analysis Dashboard</h2>
+    </header>
+
+    <NavigationControl />
+
+    <div class="content">
+        <PortfolioGridControl OnPortfolioDataLoaded="PortfolioGridControl_PortfolioDataLoaded" />
+
+        <div class="portfolio-insights">
+            <h4>Portfolio Insights</h4>
+            <table class="insights-table">
+                <tr>
+                    <td>Portfolio Last Updated:</td>
+                    <td>@lblLastUpdated</td>
+                </tr>
+                <tr>
+                    <td>Number of Holdings:</td>
+                    <td>@lblHoldingsCount</td>
+                </tr>
+                <tr>
+                    <td>Highest Risk Holding:</td>
+                    <td>@lblHighestRisk</td>
+                </tr>
+                <tr>
+                    <td>Lowest Risk Holding:</td>
+                    <td>@lblLowestRisk</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <NavLink href="/Default" class="nav-link">
+            ← Back to Main
+        </NavLink>
+    </nav>
+</div>
+
+@code {
+    private string lblLastUpdated = "No data available";
+    private string lblHoldingsCount = "0";
+    private string lblHighestRisk = "N/A";
+    private string lblLowestRisk = "N/A";
+
+    private Dictionary<string, object> _portfolioInsights = new Dictionary<string, object>();
+    private DateTime _lastAnalysisTime = DateTime.Now;
+
+    private int _portfolioViewCount = 0;
+    private DateTime? _lastPortfolioView = null;
+    private Dictionary<string, decimal> _lastPortfolioData = null;
+
+    public class PortfolioDataEventArgs
+    {
+        public Dictionary<string, decimal> Holdings { get; set; } = new Dictionary<string, decimal>();
+        public decimal TotalValue { get; set; }
+        public decimal TotalVaR { get; set; }
+        public decimal RiskRatio { get; set; }
+        public DateTime LastUpdated { get; set; }
+    }
+
+    protected override void OnInitialized()
+    {
+        _portfolioInsights = new Dictionary<string, object>();
+        _lastAnalysisTime = DateTime.Now;
+
+        _portfolioViewCount = 0;
+
+        UpdatePortfolioInsights();
+    }
+
+    private void PortfolioGridControl_PortfolioDataLoaded()
+    {
+        _portfolioViewCount += 1;
+        _lastPortfolioView = DateTime.Now;
+
+        var insights = new Dictionary<string, object>();
+
+        _portfolioInsights = insights;
+        _lastAnalysisTime = DateTime.Now;
+
+        UpdatePortfolioInsights();
+    }
+
+    private void UpdatePortfolioInsights()
+    {
+        if (_portfolioInsights != null && _portfolioInsights.Count > 0)
+        {
+            lblLastUpdated = _portfolioInsights.ContainsKey("LastUpdated")
+                ? ((DateTime)_portfolioInsights["LastUpdated"]).ToString("yyyy-MM-dd HH:mm:ss")
+                : "Never";
+
+            lblHoldingsCount = _portfolioInsights.ContainsKey("HoldingsCount")
+                ? _portfolioInsights["HoldingsCount"].ToString()
+                : "0";
+
+            lblHighestRisk = _portfolioInsights.ContainsKey("HighestRiskHolding")
+                ? _portfolioInsights["HighestRiskHolding"].ToString()
+                : "N/A";
+
+            lblLowestRisk = _portfolioInsights.ContainsKey("LowestRiskHolding")
+                ? _portfolioInsights["LowestRiskHolding"].ToString()
+                : "N/A";
+        }
+        else
+        {
+            lblLastUpdated = "No data available";
+            lblHoldingsCount = "0";
+            lblHighestRisk = "N/A";
+            lblLowestRisk = "N/A";
+        }
+    }
+}

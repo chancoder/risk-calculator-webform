@@ -1,0 +1,87 @@
+@namespace risk.calculator.webapp.Components.ViewSwitcher
+
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.Extensions.Logging
+@using Microsoft.AspNetCore.Http
+@inject NavigationManager NavigationManager
+@inject IHttpContextAccessor HttpContextAccessor
+@inject ILogger<ViewSwitcher> Logger
+
+@rendermode InteractiveServer
+
+@if (isVisible)
+{
+    <div id="viewSwitcher">
+        @CurrentView view | <NavLink href="@SwitchUrl" data-ajax="false">Switch to @AlternateView</NavLink>
+    </div>
+}
+
+@code {
+    private string CurrentView { get; set; } = string.Empty;
+    private string AlternateView { get; set; } = string.Empty;
+    private string SwitchUrl { get; set; } = string.Empty;
+    private bool isVisible = true;
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            var httpContext = HttpContextAccessor.HttpContext;
+            if (httpContext == null)
+            {
+                Logger.LogWarning("HttpContext is null. ViewSwitcher will be hidden.");
+                isVisible = false;
+                return;
+            }
+
+            bool isMobile = DetectMobileView(httpContext);
+            CurrentView = isMobile ? "Mobile" : "Desktop";
+            AlternateView = isMobile ? "Desktop" : "Mobile";
+
+            var currentUri = new Uri(NavigationManager.Uri);
+            var returnUrl = Uri.EscapeDataString(currentUri.PathAndQuery);
+            var switchView = AlternateView.ToLower();
+            SwitchUrl = $"?view={switchView}&ReturnUrl={returnUrl}";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error initializing ViewSwitcher component.");
+            isVisible = false;
+        }
+    }
+
+    private bool DetectMobileView(HttpContext httpContext)
+    {
+        // Check query parameter first (allows manual override)
+        if (httpContext.Request.Query.TryGetValue("view", out var viewParam))
+        {
+            var viewValue = viewParam.ToString().ToLower();
+            if (viewValue == "mobile") return true;
+            if (viewValue == "desktop") return false;
+        }
+
+        // Fall back to User-Agent detection
+        var userAgent = httpContext.Request.Headers["User-Agent"].ToString();
+        if (string.IsNullOrEmpty(userAgent))
+        {
+            return false;
+        }
+
+        var mobileKeywords = new[]
+        {
+            "Mobile", "Android", "iPhone", "iPad", "iPod",
+            "BlackBerry", "Windows Phone", "Opera Mini", "IEMobile"
+        };
+
+        foreach (var keyword in mobileKeywords)
+        {
+            if (userAgent.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}

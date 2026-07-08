@@ -1,0 +1,215 @@
+@namespace risk.calculator.webapp.Components.Controls.PortfolioGridControl
+
+@rendermode InteractiveServer
+@using System.Collections.Generic
+@using System.Data
+@using System.Linq
+@using Microsoft.Extensions.Logging
+
+
+<div class="portfolio-grid-control">
+    <div class="portfolio-header">
+        <h3>Current Portfolio Holdings</h3>
+        <button class="btn btn-primary" @onclick="btnRefresh_Click">Refresh Data</button>
+    </div>
+
+    <table class="portfolio-grid" style="border-collapse: collapse; width: 100%;">
+        <thead class="grid-header">
+            <tr>
+                <th>Symbol</th>
+                <th>Value ($)</th>
+                <th>Daily VaR</th>
+                <th>Risk %</th>
+                <th>Risk Level</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (portfolioRows != null)
+            {
+                @foreach (var (index, row) in portfolioRows.Select((r, i) => (i, r)))
+                {
+                    <tr class="@(index % 2 == 0 ? "grid-row" : "grid-alt-row")">
+                        <td>@row.Symbol</td>
+                        <td>@row.Value.ToString("N2")</td>
+                        <td>@row.DailyVaR.ToString("N2")</td>
+                        <td>@row.RiskPercentage.ToString("F2")%</td>
+                        <td>
+                            <span class="@("risk-level " + row.RiskLevel.ToLower())">@row.RiskLevel</span>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+
+    <div class="portfolio-summary">
+        <h4>Portfolio Summary</h4>
+        <table class="summary-table">
+            <tr>
+                <td>Total Portfolio Value:</td>
+                <td><span class="summary-value">@lblTotalValue</span></td>
+            </tr>
+            <tr>
+                <td>Total Daily VaR:</td>
+                <td><span class="summary-value">@lblTotalVaR</span></td>
+            </tr>
+            <tr>
+                <td>Portfolio Risk Ratio:</td>
+                <td><span class="summary-value">@lblRiskRatio</span></td>
+            </tr>
+            <tr>
+                <td>Last Updated:</td>
+                <td><span class="summary-value">@lblLastUpdated</span></td>
+            </tr>
+        </table>
+    </div>
+
+    <input type="hidden" value="@hfPortfolioData" />
+    <input type="hidden" value="@hfLastRefreshTime" />
+</div>
+
+@code {
+    [Inject] private ILogger<PortfolioGridControl> Logger { get; set; } = default!;
+
+    [Parameter] public EventCallback<PortfolioDataEventArgs> OnPortfolioDataLoaded { get; set; }
+
+    // Component state replacing ViewState and Session
+    private Dictionary<string, decimal> _portfolioData = new Dictionary<string, decimal>();
+    private DateTime _lastCalculationTime = DateTime.MinValue;
+
+    // Summary label values
+    private string lblTotalValue = string.Empty;
+    private string lblTotalVaR = string.Empty;
+    private string lblRiskRatio = string.Empty;
+    private string lblLastUpdated = string.Empty;
+
+    // Hidden field values
+    private string hfPortfolioData = string.Empty;
+    private string hfLastRefreshTime = string.Empty;
+
+    // Grid rows
+    private List<PortfolioRowItem> portfolioRows = new List<PortfolioRowItem>();
+
+    // Public properties for parent components to access
+    public Dictionary<string, decimal> PortfolioData => _portfolioData;
+
+    public DateTime LastCalculationTime => _lastCalculationTime;
+
+    public decimal TotalValue => _portfolioData.Values.Sum();
+
+    public decimal TotalVaR
+    {
+        get
+        {
+            var riskCalculator = new RiskCalculator();
+            decimal totalVaR = 0;
+            foreach (var item in _portfolioData)
+            {
+                totalVaR += riskCalculator.CalculateVaR(item.Key, item.Value);
+            }
+            return totalVaR;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _portfolioData = new Dictionary<string, decimal>();
+        _lastCalculationTime = DateTime.Now;
+        await LoadPortfolioData();
+    }
+
+    private async Task btnRefresh_Click()
+    {
+        await LoadPortfolioData();
+    }
+
+    private async Task LoadPortfolioData()
+    {
+        try
+        {
+            var riskCalculator = new RiskCalculator();
+            var portfolioData = riskCalculator.GetPortfolioData();
+
+            _portfolioData = portfolioData;
+            _lastCalculationTime = DateTime.Now;
+
+            var rows = new List<PortfolioRowItem>();
+            decimal totalValue = 0;
+            decimal totalVaR = 0;
+
+            foreach (var item in portfolioData)
+            {
+                decimal varValue = riskCalculator.CalculateVaR(item.Key, item.Value);
+                decimal riskPct = item.Value != 0 ? (varValue / item.Value) * 100 : 0;
+                string riskLevel = riskCalculator.GetRiskLevel(item.Value != 0 ? varValue / item.Value : 0);
+
+                rows.Add(new PortfolioRowItem
+                {
+                    Symbol = item.Key,
+                    Value = item.Value,
+                    DailyVaR = varValue,
+                    RiskPercentage = riskPct,
+                    RiskLevel = riskLevel
+                });
+
+                totalValue += item.Value;
+                totalVaR += varValue;
+            }
+
+            portfolioRows = rows;
+
+            decimal totalRiskPct = totalValue > 0 ? (totalVaR / totalValue) * 100 : 0;
+            lblTotalValue = string.Format("${0:N2}", totalValue);
+            lblTotalVaR = string.Format("${0:N2}", totalVaR);
+            lblRiskRatio = string.Format("{0:F2}%", totalRiskPct);
+            lblLastUpdated = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+            hfPortfolioData = SerializePortfolioData(portfolioData);
+            hfLastRefreshTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+            var eventArgs = new PortfolioDataEventArgs
+            {
+                TotalValue = totalValue,
+                TotalVaR = totalVaR,
+                RiskRatio = totalRiskPct,
+                Holdings = portfolioData,
+                LastUpdated = DateTime.Now
+            };
+
+            await OnPortfolioDataLoaded.InvokeAsync(eventArgs);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading portfolio data: {Message}", ex.Message);
+        }
+    }
+
+    private string SerializePortfolioData(Dictionary<string, decimal> portfolioData)
+    {
+        var items = new List<string>();
+        foreach (var item in portfolioData)
+        {
+            items.Add($"{item.Key}:{item.Value}");
+        }
+        return string.Join("|", items);
+    }
+
+    // Internal row model for the grid
+    private class PortfolioRowItem
+    {
+        public string Symbol { get; set; } = string.Empty;
+        public decimal Value { get; set; }
+        public decimal DailyVaR { get; set; }
+        public decimal RiskPercentage { get; set; }
+        public string RiskLevel { get; set; } = string.Empty;
+    }
+
+    public class PortfolioDataEventArgs : EventArgs
+    {
+        public decimal TotalValue { get; set; }
+        public decimal TotalVaR { get; set; }
+        public decimal RiskRatio { get; set; }
+        public Dictionary<string, decimal> Holdings { get; set; } = new Dictionary<string, decimal>();
+        public DateTime LastUpdated { get; set; }
+    }
+}

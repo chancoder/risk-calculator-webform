@@ -1,0 +1,21 @@
+<Router AppAssembly="typeof(Program).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+</Router>
+
+@code {
+    //private Type GetLayoutType(RouteData routeData)
+    //{
+//if multiple layouts are used, use the following logic to determine which layout to use, 
+//And replace the DefaultLayout value with @GetLayoutType(routeData)
+        
+        // Logic to determine which layout to use
+        //if (routeData.PageType.Name.StartsWith("Admin"))
+        //    return typeof(AdminLayout);
+        //if (routeData.PageType.Name.StartsWith("User"))
+        //    return typeof(UserLayout);
+        //return typeof(MainLayout);
+    //}
+}

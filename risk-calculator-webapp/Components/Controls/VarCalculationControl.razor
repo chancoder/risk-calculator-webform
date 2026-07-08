@@ -1,0 +1,316 @@
+@namespace risk.calculator.webapp.Components.Controls.VarCalculationControl
+
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components
+@using Microsoft.Extensions.Logging
+@using System.ComponentModel.DataAnnotations
+@inject ILogger<VarCalculationControl> Logger
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+
+<div class="var-calculation-control">
+
+    @if (showForm)
+    {
+        <div class="form-panel">
+            <EditForm Model="@formModel" OnValidSubmit="btnCalculate_Click" FormName="VarCalculationForm">
+                <DataAnnotationsValidator />
+
+                <div class="form-group">
+                    <label for="txtSymbol">Stock Symbol:</label>
+                    <InputText id="txtSymbol" class="form-control" @bind-Value="formModel.Symbol" />
+                    <ValidationMessage For="@(() => formModel.Symbol)" class="error-message" />
+                </div>
+
+                <div class="form-group">
+                    <label for="txtAmount">Amount ($):</label>
+                    <InputText id="txtAmount" class="form-control" @bind-Value="formModel.AmountText" />
+                    <ValidationMessage For="@(() => formModel.AmountText)" class="error-message" />
+                </div>
+
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">Calculate Risk</button>
+                    <button type="button" class="btn btn-secondary" @onclick="btnReset_Click">Reset</button>
+                </div>
+            </EditForm>
+        </div>
+    }
+
+    @if (showResults && currentResult != null)
+    {
+        <div class="results-panel">
+            <h3>Risk Analysis for <span>@currentResult.Symbol</span></h3>
+
+            <table class="results-table">
+                <tr>
+                    <td>Investment Amount</td>
+                    <td>@string.Format("${0:N2}", currentResult.Amount)</td>
+                </tr>
+                <tr>
+                    <td>Daily VaR (95%)</td>
+                    <td>@string.Format("${0:N2}", currentResult.VaR)</td>
+                </tr>
+                <tr>
+                    <td>Credit Risk Score</td>
+                    <td>@string.Format("{0:F1}/10", currentResult.CreditRisk)</td>
+                </tr>
+                <tr>
+                    <td>Risk Level</td>
+                    <td><span class="@("risk-level " + currentResult.RiskLevel?.ToLower())">@currentResult.RiskLevel</span></td>
+                </tr>
+            </table>
+
+            <div class="form-group">
+                <button type="button" class="btn btn-secondary" @onclick="btnNewCalculation_Click">New Calculation</button>
+            </div>
+        </div>
+    }
+
+    <div class="error-panel">
+        @if (showError)
+        {
+            <span class="error-message">@errorMessage</span>
+        }
+    </div>
+
+</div>
+
+@code {
+
+    // Parameters replacing traditional .NET events (Requirement 15)
+    [Parameter] public EventCallback<VaRCalculationEventArgs> OnVaRCalculated { get; set; }
+    [Parameter] public EventCallback OnCalculationReset { get; set; }
+
+    // Public parameters replacing public properties
+    [Parameter] public string InitialSymbol { get; set; } = string.Empty;
+    [Parameter] public decimal InitialAmount { get; set; } = 0m;
+
+    // UI state (replacing pnlForm.Visible / pnlResults.Visible)
+    private bool showForm = true;
+    private bool showResults = false;
+    private bool showError = false;
+    private string errorMessage = string.Empty;
+
+    // Replaces ViewState["CalculationHistory"]
+    private List<VaRCalculationResult> calculationHistory = new List<VaRCalculationResult>();
+
+    // Replaces hfCalculationCount
+    private int calculationCount = 0;
+
+    // Replaces hfLastCalculation
+    private string lastCalculation = string.Empty;
+
+    // Holds the current displayed result
+    private VaRCalculationResult currentResult = null;
+
+    // Form model with validation annotations (replaces ASP validators)
+    private VarFormModel formModel = new VarFormModel();
+
+    // Replaces ViewState["LastSymbol"] / ViewState["LastAmount"]
+    private string lastSymbol = string.Empty;
+    private decimal lastAmount = 0m;
+
+    protected override void OnInitialized()
+    {
+        // Replaces Page_Load (!IsPostBack) initialization
+        // Set default values from parameters (replacing Session["DefaultSymbol"] / Session["DefaultAmount"])
+        if (!string.IsNullOrEmpty(InitialSymbol))
+        {
+            formModel.Symbol = InitialSymbol;
+        }
+
+        if (InitialAmount > 0)
+        {
+            formModel.AmountText = InitialAmount.ToString("F2");
+        }
+    }
+
+    // Replaces btnCalculate_Click (server-side button with OnClick)
+    private async Task btnCalculate_Click()
+    {
+        try
+        {
+            string symbol = formModel.Symbol?.Trim().ToUpper() ?? string.Empty;
+
+            if (!decimal.TryParse(formModel.AmountText, out decimal amount))
+            {
+                ShowError("Please enter a valid amount.");
+                return;
+            }
+
+            // Replaces ViewState["LastSymbol"] / ViewState["LastAmount"] persistence
+            lastSymbol = symbol;
+            lastAmount = amount;
+
+            // Calculate VaR using business logic (kept as-is per Requirement 7)
+            var riskCalculator = new RiskCalculator();
+            decimal varValue = riskCalculator.CalculateVaR(symbol, amount);
+            decimal creditRisk = riskCalculator.CalculateCreditRisk(symbol);
+            string riskLevel = riskCalculator.GetRiskLevel(varValue / amount);
+
+            // Create result object (VaRCalculationResult defined in original .cs)
+            var result = new VaRCalculationResult
+            {
+                Symbol = symbol,
+                Amount = amount,
+                VaR = varValue,
+                CreditRisk = creditRisk,
+                RiskLevel = riskLevel,
+                CalculatedAt = DateTime.Now
+            };
+
+            // Replaces ViewState["CalculationHistory"]
+            calculationHistory.Add(result);
+
+            // Replaces hfCalculationCount increment
+            calculationCount++;
+
+            // Display results (replaces DisplayResults method)
+            DisplayResults(result);
+
+            // Replaces hfLastCalculation hidden field value
+            lastCalculation = $"{symbol}|{amount}|{varValue}|{creditRisk}|{riskLevel}";
+
+            // Raise Blazor EventCallback replacing VaRCalculated?.Invoke(this, ...)
+            await OnVaRCalculated.InvokeAsync(new VaRCalculationEventArgs(result));
+
+            // Check for high risk and add alert (kept as-is)
+            if (varValue / amount > 0.05m)
+            {
+                var alertService = new RiskAlertService(HttpContextAccessor);
+                alertService.AddAlert($"HIGH RISK: {symbol} VaR exceeds 5% threshold at {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "An error occurred during VaR calculation.");
+            ShowError($"An error occurred during calculation: {ex.Message}");
+        }
+    }
+
+    // Replaces btnReset_Click
+    private async Task btnReset_Click()
+    {
+        ResetForm();
+        // Raise Blazor EventCallback replacing CalculationReset?.Invoke(this, EventArgs.Empty)
+        await OnCalculationReset.InvokeAsync();
+    }
+
+    // Replaces btnNewCalculation_Click
+    private void btnNewCalculation_Click()
+    {
+        ResetForm();
+    }
+
+    // Replaces private DisplayResults method
+    private void DisplayResults(VaRCalculationResult result)
+    {
+        currentResult = result;
+        showForm = false;
+        showResults = true;
+        showError = false;
+    }
+
+    // Replaces private ResetForm method
+    private void ResetForm()
+    {
+        showForm = true;
+        showResults = false;
+        showError = false;
+        currentResult = null;
+
+        // Restore defaults (replacing Session["DefaultSymbol"] / Session["DefaultAmount"] fallback)
+        formModel.Symbol = !string.IsNullOrEmpty(InitialSymbol) ? InitialSymbol : "AAPL";
+        formModel.AmountText = InitialAmount > 0 ? InitialAmount.ToString("F2") : "100000";
+    }
+
+    // Replaces private ShowError method
+    private void ShowError(string message)
+    {
+        errorMessage = message;
+        showError = true;
+        showForm = true;
+        showResults = false;
+    }
+
+    // Public properties replacing original public properties on the UserControl
+    public string Symbol
+    {
+        get => formModel.Symbol ?? string.Empty;
+        set => formModel.Symbol = value;
+    }
+
+    public decimal Amount
+    {
+        get => decimal.TryParse(formModel.AmountText, out decimal amt) ? amt : 0m;
+        set => formModel.AmountText = value.ToString("F2");
+    }
+
+    public int CalculationCount => calculationCount;
+
+    public List<VaRCalculationResult> CalculationHistory => calculationHistory;
+
+    // Internal form model with DataAnnotations (replaces ASP.NET validator controls)
+    private class VarFormModel
+    {
+        [Required(ErrorMessage = "Stock symbol is required")]
+        public string Symbol { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Amount is required")]
+        [RegularExpression(@"^\d+(\.\d{1,2})?$", ErrorMessage = "Please enter a valid amount")]
+        [AmountRange(0.01, 999999999.99, ErrorMessage = "Amount must be between $0.01 and $999,999,999.99")]
+        public string AmountText { get; set; } = string.Empty;
+    }
+
+    // Custom validation attribute replacing <asp:RangeValidator> for decimal-as-string
+    private class AmountRangeAttribute : ValidationAttribute
+    {
+        private readonly double _min;
+        private readonly double _max;
+
+        public AmountRangeAttribute(double min, double max)
+        {
+            _min = min;
+            _max = max;
+        }
+
+        protected override ValidationResult IsValid(object value, ValidationContext validationContext)
+        {
+            if (value is string strValue && decimal.TryParse(strValue, out decimal parsed))
+            {
+                if ((double)parsed >= _min && (double)parsed <= _max)
+                {
+                    return ValidationResult.Success;
+                }
+            }
+            return new ValidationResult(ErrorMessage ?? $"Value must be between {_min} and {_max}.");
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Types defined in the original .cs file (Requirement 17)
+    // -----------------------------------------------------------------------
+
+    // VaRCalculationEventArgs exists in original .cs → included here
+    [Serializable]
+    public class VaRCalculationEventArgs : EventArgs
+    {
+        public VaRCalculationResult Result { get; }
+
+        public VaRCalculationEventArgs(VaRCalculationResult result)
+        {
+            Result = result;
+        }
+    }
+
+    // VaRCalculationResult exists in original .cs → included here
+    [Serializable]
+    public class VaRCalculationResult
+    {
+        public string Symbol { get; set; }
+        public decimal Amount { get; set; }
+        public decimal VaR { get; set; }
+        public decimal CreditRisk { get; set; }
+        public string RiskLevel { get; set; }
+        public DateTime CalculatedAt { get; set; }
+    }
+}

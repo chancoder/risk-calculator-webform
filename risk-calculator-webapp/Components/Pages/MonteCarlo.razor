@@ -1,0 +1,138 @@
+@namespace risk.calculator.webapp.Components.Pages
+
+@page "/MonteCarlo"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components
+@using Microsoft.Extensions.Logging
+@using System.Collections.Generic
+@using System.Linq
+@using risk.calculator.webapp.Components.Controls
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@inject ILogger<MonteCarlo> Logger
+
+<PageTitle>Monte Carlo Simulation - Risk Calculator</PageTitle>
+
+<link href="Content/Site.css" rel="stylesheet" type="text/css" />
+
+<div class="container">
+    <header>
+        <h2>Monte Carlo Risk Simulation Dashboard</h2>
+    </header>
+
+    <NavigationControl />
+
+    <div class="content">
+        <MonteCarloControl OnSimulationCompleted="MonteCarloControl_SimulationCompleted" />
+
+        <div class="simulation-statistics">
+            <h4>Simulation Statistics</h4>
+            <table class="stats-table">
+                <tr>
+                    <td>Total Simulations This Session:</td>
+                    <td>@lblTotalSimulations</td>
+                </tr>
+                <tr>
+                    <td>Last Simulation Time:</td>
+                    <td>@lblLastSimulationTime</td>
+                </tr>
+                <tr>
+                    <td>Average Simulation Time:</td>
+                    <td>@lblAverageSimulationTime</td>
+                </tr>
+                <tr>
+                    <td>Fastest Simulation:</td>
+                    <td>@lblFastestSimulation</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <NavLink href="/Default" class="nav-link">
+            ← Back to Main
+        </NavLink>
+    </nav>
+</div>
+
+@code {
+    private string lblTotalSimulations = "0";
+    private string lblLastSimulationTime = "No simulations yet";
+    private string lblAverageSimulationTime = "N/A";
+    private string lblFastestSimulation = "N/A";
+
+    private int _totalSimulations = 0;
+    private DateTime? _lastSimulationTime = null;
+    private MonteCarloSimulationResult _lastSimulationResult = null;
+    private List<MonteCarloSimulationResult> _simulationHistory = new List<MonteCarloSimulationResult>();
+    private List<long> _simulationTimes = new List<long>();
+
+    protected override void OnInitialized()
+    {
+        UpdateStatistics();
+    }
+
+    private void MonteCarloControl_SimulationCompleted()
+    {
+
+        _totalSimulations += 1;
+        _lastSimulationTime = DateTime.Now;
+
+        UpdateStatistics();
+
+        Logger.LogInformation("Simulation completed. Total simulations: {TotalSimulations}", _totalSimulations);
+    }
+
+    private void UpdateStatistics()
+    {
+        lblTotalSimulations = _totalSimulations.ToString();
+
+        if (_lastSimulationTime.HasValue)
+        {
+            lblLastSimulationTime = _lastSimulationTime.Value.ToString("yyyy-MM-dd HH:mm:ss");
+        }
+        else
+        {
+            lblLastSimulationTime = "No simulations yet";
+        }
+
+        if (_simulationTimes != null && _simulationTimes.Count > 0)
+        {
+            double averageTime = _simulationTimes.Average();
+            long fastestTime = _simulationTimes.Min();
+
+            lblAverageSimulationTime = $"{averageTime:F0} ms";
+            lblFastestSimulation = $"{fastestTime} ms";
+        }
+        else
+        {
+            lblAverageSimulationTime = "N/A";
+            lblFastestSimulation = "N/A";
+        }
+    }
+
+    public class MonteCarloSimulationResult
+    {
+        public long ExecutionTimeMs { get; set; }
+        public int Iterations { get; set; }
+        public double MeanResult { get; set; }
+        public double StandardDeviation { get; set; }
+        public double ConfidenceInterval95Lower { get; set; }
+        public double ConfidenceInterval95Upper { get; set; }
+        public DateTime SimulationDate { get; set; } = DateTime.Now;
+    }
+}

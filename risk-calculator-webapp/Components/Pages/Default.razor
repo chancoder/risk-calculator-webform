@@ -1,0 +1,93 @@
+@namespace risk.calculator.webapp.Components.Pages.Default
+
+@page "/"
+@page "/Default"
+
+@using Microsoft.AspNetCore.Http
+@using Microsoft.Extensions.Logging
+
+@inject IHttpContextAccessor HttpContextAccessor
+@inject ILogger<Default> Logger
+
+@rendermode InteractiveServer
+
+<div class="container">
+    <header>
+        <h1>Financial Risk Management System v2.1</h1>
+        <h3>Blazor Application - Enhanced with Razor Components!</h3>
+    </header>
+
+    <nav class="navigation-control">
+        <NavLink href="/Default" class="sidebar-nav-link">Dashboard</NavLink>
+        <NavLink href="/VaR" class="sidebar-nav-link">VaR Calculator</NavLink>
+        <NavLink href="/Portfolio" class="sidebar-nav-link">Portfolio Analysis</NavLink>
+        <NavLink href="/MonteCarlo" class="sidebar-nav-link">Monte Carlo</NavLink>
+        <NavLink href="/Alerts" class="sidebar-nav-link">Risk Alerts</NavLink>
+    </nav>
+
+    <div class="welcome-message">
+        <h4>Welcome to the Risk Calculator</h4>
+        <p>This application provides comprehensive financial risk analysis tools including VaR calculations, portfolio analysis, Monte Carlo simulations, and risk alert management.</p>
+
+        <div class="feature-highlights">
+            <h5>Key Features:</h5>
+            <ul>
+                <li><strong>Value at Risk (VaR) Calculations</strong> - Calculate risk metrics for individual securities</li>
+                <li><strong>Portfolio Analysis</strong> - View comprehensive portfolio risk metrics</li>
+                <li><strong>Monte Carlo Simulations</strong> - Run statistical risk simulations</li>
+                <li><strong>Risk Alerts</strong> - Monitor and manage risk alerts</li>
+                <li><strong>State Management</strong> - Session State for data persistence</li>
+            </ul>
+        </div>
+    </div>
+
+    <footer>
+        <p><i>Current Time: @currentTime</i></p>
+        <p><i>Session ID: @sessionId</i></p>
+    </footer>
+</div>
+
+@code {
+    private string currentTime = string.Empty;
+    private string sessionId = string.Empty;
+    private int pageVisits = 0;
+    private DateTime firstVisitTime;
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            var httpContext = HttpContextAccessor.HttpContext;
+
+            currentTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            sessionId = httpContext?.Session?.Id ?? string.Empty;
+
+            // Initialize SessionState with default values
+            if (httpContext?.Session != null)
+            {
+                if (httpContext.Session.GetString("DefaultSymbol") == null)
+                {
+                    httpContext.Session.SetString("DefaultSymbol", "AAPL");
+                }
+                if (httpContext.Session.GetString("DefaultAmount") == null)
+                {
+                    httpContext.Session.SetString("DefaultAmount", "100000");
+                }
+                if (httpContext.Session.GetString("DefaultSimulationCount") == null)
+                {
+                    httpContext.Session.SetString("DefaultSimulationCount", "1000");
+                }
+            }
+
+            // Track page visits at component level (replaces ViewState)
+            pageVisits = 1;
+            firstVisitTime = DateTime.Now;
+
+            Logger.LogInformation("Default page initialized at {Time}, SessionId: {SessionId}", currentTime, sessionId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during Default page initialization");
+        }
+    }
+}

@@ -1,0 +1,158 @@
+@page "/CalculateVar"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components
+@using risk.calculator.webapp
+@using risk.calculator.webapp.Components.Controls
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@using Microsoft.AspNetCore.Http
+@using Microsoft.Extensions.Logging
+@inject ILogger<CalculateVar> Logger
+@inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager NavigationManager
+
+<div class="container">
+    <header>
+        <h2>Value at Risk (VaR) Calculator</h2>
+    </header>
+
+    <NavigationControl />
+
+    <div class="content">
+        <VarCalculationControl
+            OnVaRCalculated="@(() => VarCalcControl_VaRCalculated(new VaRCalculationEventArgs()))"
+            OnCalculationReset="@(() => VarCalcControl_CalculationReset())" />
+
+        <div class="calculation-stats">
+            <h4>Calculation Statistics</h4>
+            <table class="stats-table">
+                <tr>
+                    <td>Total Calculations This Session:</td>
+                    <td>@lblTotalCalculations</td>
+                </tr>
+                <tr>
+                    <td>Last Calculation Time:</td>
+                    <td>@lblLastCalculationTime</td>
+                </tr>
+                <tr>
+                    <td>Session Duration:</td>
+                    <td>@lblSessionDuration</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <NavLink href="/Default" class="nav-link">
+            ← Back to Main
+        </NavLink>
+    </nav>
+</div>
+
+@code {
+    private string lblTotalCalculations = string.Empty;
+    private string lblLastCalculationTime = string.Empty;
+    private string lblSessionDuration = string.Empty;
+
+    private int _totalCalculations = 0;
+    private DateTime? _lastCalculationTime = null;
+    private DateTime _sessionStartTime = DateTime.Now;
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            _sessionStartTime = DateTime.Now;
+            _totalCalculations = 0;
+            _lastCalculationTime = null;
+
+            Logger.LogInformation("CalculateVar page initialized at {SessionStartTime}", _sessionStartTime);
+
+            UpdateStatistics();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during CalculateVar page initialization");
+        }
+    }
+
+    private void VarCalcControl_VaRCalculated(VaRCalculationEventArgs e)
+    {
+        try
+        {
+            var result = e.Result;
+
+            _totalCalculations += 1;
+            _lastCalculationTime = DateTime.Now;
+
+            Logger.LogInformation("VaR calculated. Total calculations this session: {TotalCalculations}", _totalCalculations);
+
+            UpdateStatistics();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error handling VaR calculation event");
+        }
+    }
+
+    private void VarCalcControl_CalculationReset()
+    {
+        try
+        {
+            Logger.LogInformation("Calculation reset triggered");
+            UpdateStatistics();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error handling calculation reset event");
+        }
+    }
+
+
+
+    public class VaRCalculationEventArgs
+    {
+        public object Result { get; set; }
+    }
+
+    private void UpdateStatistics()
+    {
+        lblTotalCalculations = _totalCalculations.ToString();
+
+        if (_lastCalculationTime.HasValue)
+        {
+            lblLastCalculationTime = _lastCalculationTime.Value.ToString("yyyy-MM-dd HH:mm:ss");
+        }
+        else
+        {
+            lblLastCalculationTime = "No calculations yet";
+        }
+
+        TimeSpan duration = DateTime.Now - _sessionStartTime;
+        lblSessionDuration = $"{duration.Hours:D2}:{duration.Minutes:D2}:{duration.Seconds:D2}";
+    }
+}
